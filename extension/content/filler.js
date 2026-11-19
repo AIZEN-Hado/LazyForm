@@ -524,3 +524,14 @@
     }
   }
 
+  function typeText(el, value) {
+    el.focus({ preventScroll: true });
+    fire(el, 'focus', 'focusin');
+    setNativeValue(el, value);
+    fire(el, 'input', 'change');
+    el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'Unidentified' }));
+    el.blur();
+    fire(el, 'blur', 'focusout');
+  }
+
+  let DATE_PREF = 'auto';
