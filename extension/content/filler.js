@@ -234,3 +234,13 @@
       .map((n) => textOf(n))
       .join(' ');
 
+  function labelText(el) {
+    const root = el.getRootNode();
+    const parts = [];
+    if (el.labels && el.labels.length) parts.push([...el.labels].map((l) => textOf(l, el)).join(' '));
+    const lb = el.getAttribute('aria-labelledby');
+    if (lb) parts.push(byIds(lb, root));
+    if (el.getAttribute('aria-label')) parts.push(el.getAttribute('aria-label'));
+    return parts.join(' ').trim();
+  }
+
