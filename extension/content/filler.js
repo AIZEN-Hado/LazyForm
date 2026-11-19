@@ -746,3 +746,53 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Main: scan + fill
+  // ---------------------------------------------------------------------------
+  function buildFields() {
+    const controls = collectControls().filter(isUsable);
+    const fields = [];
+    const seenGroups = new Set();
+    for (const el of controls) {
+      const type = (el.type || '').toLowerCase();
+      if (el.tagName === 'INPUT' && (type === 'radio' || (type === 'checkbox' && el.name))) {
+        const groupKey = el.form ? `${type}:${el.name}:${[...document.forms].indexOf(el.form)}` : `${type}:${el.name}`;
+        const members = el.name
+          ? [...(el.form || el.getRootNode()).querySelectorAll(`input[type="${type}"][name="${CSS.escape(el.name)}"]`)]
+          : [el];
+        if (el.name && seenGroups.has(groupKey)) continue;
+        seenGroups.add(groupKey);
+        if (type === 'checkbox' && members.length === 1) {
+          fields.push({ kind: 'checkbox', el, d: describe(el) });
+        } else {
+          fields.push({ kind: type === 'radio' ? 'radio' : 'checkgroup', el, members, d: describe(el) });
+        }
+        continue;
+      }
+      if (type === 'checkbox') {
+        fields.push({ kind: 'checkbox', el, d: describe(el) });
+        continue;
+      }
+      if (type === 'file') {
+        fields.push({ kind: 'file', el, d: describe(el) });
+        continue;
+      }
+      if (el.tagName === 'SELECT') {
+        fields.push({ kind: 'select', el, d: describe(el) });
+        continue;
+      }
+      const role = el.getAttribute('role');
+      const isCombo =
+        role === 'combobox' ||
+        (el.getAttribute('aria-haspopup') === 'listbox' && el.tagName !== 'INPUT') ||
+        (el.tagName === 'INPUT' && el.getAttribute('aria-autocomplete') === 'list');
+      if (isCombo && el.tagName !== 'TEXTAREA') {
+        // buttons that open a listbox but sit inside another combobox are handled by it
+        if (el.tagName !== 'INPUT' && el.querySelector('input')) continue;
+        fields.push({ kind: 'combo', el, d: describe(el) });
+        continue;
+      }
+      if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') fields.push({ kind: 'text', el, d: describe(el) });
+    }
+    return fields;
+  }
+
