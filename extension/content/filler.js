@@ -115,3 +115,18 @@
     bday: 'dateOfBirth', sex: 'gender',
   };
 
+  const KEY_LABELS = {
+    linkedin: 'LinkedIn URL', github: 'GitHub URL', twitter: 'X / Twitter', email: 'email', phoneCountryCode: 'phone country code',
+    phone: 'phone number', preferredName: 'preferred name', middleName: 'middle name', firstName: 'first name', lastName: 'last name',
+    dateOfBirth: 'date of birth', currentCompany: 'current company', currentTitle: 'current job title', fullName: 'name',
+    street2: 'address line 2', postalCode: 'postal code', city: 'city', state: 'state / province', nationality: 'citizenship',
+    country: 'country', street: 'street address', location: 'city & country', yearsExperience: 'years of experience',
+    currentSalary: 'current salary', expectedSalary: 'expected salary', availableStartDate: 'earliest start date',
+    noticePeriod: 'notice period', requireSponsorship: 'sponsorship answer', authorizedToWork: 'work authorisation answer',
+    willingToRelocate: 'relocation answer', over18: 'age (18+) answer', workMode: 'work-mode preference', pronouns: 'pronouns',
+    hispanic: 'Hispanic/Latino answer', race: 'race / ethnicity answer', gender: 'gender answer', veteran: 'veteran status',
+    disability: 'disability answer', school: 'school (Education)', fieldOfStudy: 'field of study', degree: 'degree',
+    graduationDate: 'graduation date', gpa: 'GPA / grade', coverLetter: 'cover letter', summary: 'professional summary',
+    skills: 'skills', languages: 'languages', howHeard: '“how did you hear about us” answer', portfolio: 'portfolio / website',
+  };
+
