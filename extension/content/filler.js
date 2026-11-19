@@ -585,3 +585,62 @@
     return fn();
   }
 
+  function visibleOptions(near) {
+    const scope = near?.getAttribute?.('aria-controls') || near?.getAttribute?.('aria-owns');
+    const owned = scope && document.getElementById(scope);
+    const list = owned ? owned.querySelectorAll('[role="option"]') : document.querySelectorAll('[role="option"], [data-automation-id="promptOption"]');
+    return [...list].filter(isVisible).map((n) => ({ text: textOf(n) || n.getAttribute('aria-label') || '', value: '', ref: n }));
+  }
+
+  function clickLike(node) {
+    const opts = { bubbles: true, cancelable: true, composed: true, view: window };
+    node.dispatchEvent(new PointerEvent('pointerdown', opts));
+    node.dispatchEvent(new MouseEvent('mousedown', opts));
+    node.dispatchEvent(new PointerEvent('pointerup', opts));
+    node.dispatchEvent(new MouseEvent('mouseup', opts));
+    node.click();
+  }
+
+  async function fillCombobox(el, value, key) {
+    const isInput = el.tagName === 'INPUT';
+    if (isInput) {
+      el.focus();
+      clickLike(el);
+      setNativeValue(el, String(value).slice(0, 40));
+      fire(el, 'input');
+      el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' }));
+    } else {
+      clickLike(el);
+    }
+    let opts = await waitFor(() => {
+      const o = visibleOptions(el);
+      return o.length ? o : null;
+    }, 1800);
+    if (!opts || !opts.length) {
+      if (isInput) {
+        // free-text combobox (e.g. location autocompletes): leave the typed value
+        fire(el, 'change');
+        return 'typed';
+      }
+      return false;
+    }
+    let choice = pickOption(opts, value, key);
+    if (!choice && isInput) {
+      // retry with a shorter query (first word)
+      setNativeValue(el, String(value).split(/[ ,]/)[0]);
+      fire(el, 'input');
+      await sleep(400);
+      opts = visibleOptions(el);
+      choice = pickOption(opts, value, key);
+    }
+    if (!choice) {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+      el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+      if (isInput) { setNativeValue(el, ''); fire(el, 'input'); }
+      return false;
+    }
+    clickLike(choice.ref);
+    await sleep(120);
+    return choice.text;
+  }
+
