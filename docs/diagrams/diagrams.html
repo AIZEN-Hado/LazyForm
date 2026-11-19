@@ -118,3 +118,49 @@ function hero(t, name) {
   pill(g, 508, 430, 'Never submits', t, { size: 14 });
 }
 
+/* ---------------- 2. architecture ---------------- */
+function architecture(t, name) {
+  const W = 1600, H = 760, g = make(name, W, H, t);
+  text(g, 'How the pieces fit', 64, 76, { size: 30, weight: 700, color: t.text, track: -1 });
+  text(g, 'Everything runs inside Chrome on your machine. There is no server.', 64, 108, { size: 16, color: t.text2 });
+  // browser frame
+  rr(g, 48, 140, W - 96, H - 188, 26); g.strokeStyle = t.line; g.lineWidth = 1.5; g.setLineDash([6, 7]); g.stroke(); g.setLineDash([]);
+  pill(g, 150, 140, 'Your Chrome profile', t, { size: 12.5 });
+
+  const A = [110, 210, 330, 92], B = [110, 340, 330, 92], C = [110, 470, 330, 92];
+  box(g, ...A, t, 'Toolbar popup', 'Start / Stop auto-apply · Fill once', { icon: sym.window(t) });
+  box(g, ...B, t, 'Setup page', 'Profile, resume, saved answers', { icon: sym.form(t) });
+  box(g, ...C, t, 'Keyboard shortcuts', 'Alt+Shift+F · Alt+Shift+Y', { icon: sym.bolt(t) });
+
+  const BG = [610, 300, 360, 120];
+  box(g, ...BG, t, 'Background worker', 'Tracks auto-apply sessions per tab', { icon: sym.gear(t), dark: true, r: 22 });
+  const ST = [610, 540, 360, 96];
+  box(g, ...ST, t, 'chrome.storage.local', 'Your profile never leaves it', { icon: sym.db(t) });
+
+  const P = [1120, 190, 400, 480];
+  rr(g, ...P, 22); g.fillStyle = t.panel; g.fill(); g.strokeStyle = t.line; g.stroke();
+  text(g, 'Job application tab', 1146, 228, { size: 15.5, weight: 600, color: t.text });
+  text(g, 'Scripts injected only when you ask', 1146, 250, { size: 12.5, color: t.text2 });
+  box(g, 1146, 278, 348, 84, t, 'filler.js', 'detect → understand → match → fill', { icon: sym.eye(t) });
+  box(g, 1146, 378, 348, 84, t, 'session.js', 'watches for new steps & pages', { icon: sym.orb(t) });
+  // fake form rows
+  [490, 530, 570, 610].forEach((y, i) => {
+    rr(g, 1146, y, 348, 30, 10); g.fillStyle = t.bg; g.fill(); g.strokeStyle = t.line; g.stroke();
+    rr(g, 1160, y + 11, [120, 160, 90, 140][i], 8, 4); g.fillStyle = t.panel2; g.fill();
+    g.beginPath(); g.arc(1474, y + 15, 8, 0, 7); g.fillStyle = i < 3 ? t.ok : t.warn; g.fill();
+    if (i < 3) check(g, 1474, y + 15, 10, '#fff'); else text(g, '!', 1474, y + 16, { size: 11, weight: 700, color: '#fff', align: 'center', base: 'middle' });
+  });
+
+  const c = t.text3;
+  arrow(g, 440, 256, 610, 340, c, { curve: .25 });
+  arrow(g, 440, 516, 610, 380, c, { curve: -.25 });
+  arrow(g, 440, 386, 610, 588, c, { curve: -.2, dash: true });
+  arrow(g, 790, 420, 790, 540, c);
+  arrow(g, 970, 330, 1120, 320, c);
+  arrow(g, 1120, 440, 970, 400, c, { dash: true });
+  text(g, 'inject + start', 1000, 312, { size: 12, weight: 500, color: t.text3 });
+  text(g, 'progress', 1012, 444, { size: 12, weight: 500, color: t.text3 });
+  text(g, 'reads profile', 802, 488, { size: 12, weight: 500, color: t.text3 });
+  text(g, 'saves', 470, 520, { size: 12, weight: 500, color: t.text3 });
+}
+
