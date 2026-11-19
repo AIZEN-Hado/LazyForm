@@ -555,3 +555,33 @@
     return pref === 'MM/DD/YYYY' ? `${mo}/${d}/${y}` : `${d}/${mo}/${y}`;
   }
 
+  function adaptValue(el, key, value) {
+    if (value == null) return '';
+    let v = String(value);
+    if (/date|range/i.test(key) || key === 'dateOfBirth' || (el.type || '').match(/^(date|month)$/)) {
+      if (/^\d{4}-\d{2}/.test(v)) v = formatDate(v, el);
+    }
+    if (key === 'graduationDate' && /\byear\b/.test(norm(labelText(el) + ' ' + el.name)) && /^\d{4}/.test(String(value))) {
+      v = String(value).slice(0, 4);
+    }
+    if ((el.type || '') === 'number') {
+      const n = String(v).match(/-?\d+(\.\d+)?/);
+      v = n ? n[0] : '';
+    }
+    const max = el.maxLength;
+    if (max && max > 0 && v.length > max) v = v.slice(0, max);
+    return v;
+  }
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function waitFor(fn, timeout = 1500, step = 60) {
+    const end = Date.now() + timeout;
+    while (Date.now() < end) {
+      const v = fn();
+      if (v) return v;
+      await sleep(step);
+    }
+    return fn();
+  }
+
