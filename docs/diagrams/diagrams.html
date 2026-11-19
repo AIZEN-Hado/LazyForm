@@ -164,3 +164,34 @@ function architecture(t, name) {
   text(g, 'saves', 470, 520, { size: 12, weight: 500, color: t.text3 });
 }
 
+/* ---------------- 3. fill pipeline ---------------- */
+function pipeline(t, name) {
+  const W = 1600, H = 470, g = make(name, W, H, t);
+  text(g, 'What happens when a form is filled', 64, 76, { size: 30, weight: 700, color: t.text, track: -1 });
+  text(g, 'Five passes over every field, in milliseconds.', 64, 108, { size: 16, color: t.text2 });
+  const steps = [
+    ['01', 'Detect', 'inputs, selects, radios,\ncomboboxes, shadow DOM'],
+    ['02', 'Understand', 'labels, aria, placeholder,\nnearby text, section'],
+    ['03', 'Match', '60+ field rules, ranges,\nyes/no, saved answers'],
+    ['04', 'Fill', 'native setters + events so\nReact & Workday notice'],
+    ['05', 'Review', 'green = filled\namber = needs you'],
+  ];
+  const w = 268, gap = 28, x0 = 64, y = 170, h = 230;
+  steps.forEach(([n, title, sub], i) => {
+    const x = x0 + i * (w + gap);
+    rr(g, x, y, w, h, 22); g.fillStyle = i === 4 ? t.ink : t.panel; g.fill();
+    const fg = i === 4 ? t.inkText : t.text, fg2 = i === 4 ? (t === THEMES.light ? '#bdbdbd' : '#4a525c') : t.text2;
+    text(g, n, x + 24, y + 44, { size: 14, weight: 600, color: i === 4 ? fg2 : t.text3, track: 1 });
+    // symbol
+    const sx = x + w - 46, sy = y + 40;
+    if (i === 0) { g.strokeStyle = fg; g.lineWidth = 2; g.beginPath(); g.arc(sx - 3, sy - 3, 10, 0, 7); g.stroke(); g.beginPath(); g.moveTo(sx + 5, sy + 5); g.lineTo(sx + 13, sy + 13); g.stroke(); }
+    if (i === 1) sym.eye(t)(g, sx, sy, i === 4);
+    if (i === 2) { g.strokeStyle = fg; g.lineWidth = 2; [[-8, 0], [8, 0]].forEach(([d]) => { g.beginPath(); g.arc(sx + d, sy, 8, 0, 7); g.stroke(); }); }
+    if (i === 3) sym.bolt(t)(g, sx, sy, false);
+    if (i === 4) orb(g, sx, sy, 15);
+    text(g, title, x + 24, y + 120, { size: 28, weight: 650, color: fg, track: -1 });
+    sub.split('\n').forEach((l, k) => text(g, l, x + 24, y + 156 + k * 21, { size: 14.5, color: fg2 }));
+    if (i < 4) arrow(g, x + w + 4, y + h / 2, x + w + gap - 4, y + h / 2, t.text3, { head: 7 });
+  });
+}
+
