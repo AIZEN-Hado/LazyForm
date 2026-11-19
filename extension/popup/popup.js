@@ -139,3 +139,41 @@ function showResult(res) {
   view.replaceChildren(...blocks);
 }
 
+async function doCapture() {
+  let items;
+  try { items = await captureTab(tabId); } catch (e) { view.replaceChildren(restrictedMessage()); return; }
+  if (!items.length) {
+    view.replaceChildren(
+      el('div', { class: 'empty' }, el('h2', { text: 'Nothing new to save' }),
+        el('p', { text: 'Answer the questions LazyForm left blank, then click “Save my new answers” so it can fill them next time.' })),
+      el('button', { class: 'btn', type: 'button', text: 'Back', onclick: start }));
+    return;
+  }
+  const boxes = items.map((it, i) => {
+    const cb = el('input', { type: 'checkbox', id: 'c' + i, checked: true });
+    return { it, cb, li: el('li', {}, cb, el('label', { htmlFor: 'c' + i }, el('span', { class: 'q', text: it.question }), el('span', { class: 'a', text: it.answer }))) };
+  });
+  view.replaceChildren(
+    el('p', { class: 'muted', text: 'These are answers you typed that aren’t in your profile yet. Save them and LazyForm will reuse them on similar questions.' }),
+    el('ul', { class: 'list cap' }, boxes.map((b) => b.li)),
+    el('div', { class: 'actions' },
+      el('button', { class: 'btn', type: 'button', text: 'Cancel', onclick: start }),
+      el('button', { class: 'btn primary', type: 'button', text: 'Save selected', onclick: async () => {
+        const { profile = {} } = await chrome.storage.local.get('profile');
+        const qa = profile.customQA || [];
+        let added = 0;
+        boxes.filter((b) => b.cb.checked).forEach(({ it }) => {
+          const existing = qa.find((q) => q.question.trim().toLowerCase() === it.question.trim().toLowerCase());
+          if (existing) existing.answer = it.answer; else { qa.push(it); added++; }
+        });
+        profile.customQA = qa;
+        await chrome.storage.local.set({ profile });
+        view.replaceChildren(el('div', { class: 'empty' }, el('h2', { text: 'Saved' }), el('p', { text: `${added} new answer${added === 1 ? '' : 's'} added to your profile.` })),
+          el('button', { class: 'btn', type: 'button', text: 'Done', onclick: start }));
+      } })));
+}
+
+function statusLine(text, tone) {
+  return el('div', { class: 'status' }, el('span', { class: 'dot ' + (tone || ''), 'aria-hidden': 'true' }), el('span', { text }));
+}
+
