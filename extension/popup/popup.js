@@ -177,3 +177,34 @@ function statusLine(text, tone) {
   return el('div', { class: 'status' }, el('span', { class: 'dot ' + (tone || ''), 'aria-hidden': 'true' }), el('span', { text }));
 }
 
+async function start() {
+  const { profile = {} } = await chrome.storage.local.get('profile');
+  if (!profile.email && !profile.firstName) {
+    view.replaceChildren(el('div', { class: 'empty' },
+      el('span', { class: 'orb lg', 'aria-hidden': 'true' }),
+      el('h2', { text: 'Set up your profile first' }),
+      el('p', { text: 'Add your details once — name, contact, experience, resume — and LazyForm will fill application forms for you.' }),
+      el('button', { class: 'btn primary', type: 'button', text: 'Set up profile', onclick: () => { chrome.runtime.openOptionsPage(); window.close(); } })));
+    return;
+  }
+  const st = await sessionStatus();
+  home(statusLine('Checking this page…'), st);
+  try {
+    const s = await scanTab(tabId);
+    const status = !s.fields ? statusLine('No form fields detected yet', '')
+      : statusLine(`${s.fields} field${s.fields === 1 ? '' : 's'} found · ${s.recognised} match your profile`, s.recognised ? 'ok' : 'warn');
+    view.firstElementChild.replaceWith(status);
+  } catch (e) {
+    if (e instanceof RestrictedPageError) view.replaceChildren(restrictedMessage());
+  }
+}
+
+(async () => {
+  tabId = await getTabId();
+  try {
+    const cmds = await chrome.commands.getAll();
+    shortcut = cmds.find((c) => c.name === 'fill-form')?.shortcut || 'not set';
+    autoShortcut = cmds.find((c) => c.name === 'toggle-auto')?.shortcut || '';
+  } catch {}
+  start();
+})();
