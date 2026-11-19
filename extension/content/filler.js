@@ -535,3 +535,23 @@
   }
 
   let DATE_PREF = 'auto';
+  function formatDate(iso, el) {
+    if (!iso) return '';
+    const m = String(iso).match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/);
+    if (!m) return iso;
+    const [, y, mo, d = '01'] = m;
+    const type = (el.type || '').toLowerCase();
+    if (type === 'date') return `${y}-${mo}-${d}`;
+    if (type === 'month') return `${y}-${mo}`;
+    const ph = norm(el.getAttribute('placeholder') + ' ' + labelText(el));
+    if (/dd mm yyyy|dd mm yy/.test(ph)) return `${d}/${mo}/${y}`;
+    if (/mm yyyy|mm yy/.test(ph) && !/dd/.test(ph)) return `${mo}/${y}`;
+    if (/yyyy mm dd/.test(ph)) return `${y}-${mo}-${d}`;
+    if (/\byyyy\b/.test(ph) && !/mm/.test(ph)) return y;
+    if (/^(year)$|\byear\b/.test(ph) && !/month|mm/.test(ph)) return y;
+    if (/^(month)$|\bmonth\b/.test(ph) && !/year|yy/.test(ph)) return String(Number(mo));
+    let pref = DATE_PREF;
+    if (pref === 'auto') pref = /^en-us|^en-ph|^en-ca/i.test(navigator.language || '') ? 'MM/DD/YYYY' : 'DD/MM/YYYY';
+    return pref === 'MM/DD/YYYY' ? `${mo}/${d}/${y}` : `${d}/${mo}/${y}`;
+  }
+
