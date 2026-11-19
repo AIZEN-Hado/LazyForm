@@ -70,3 +70,28 @@ Answer a new question yourself, click **Save my new answers**, and it fills that
 
 <br>
 
+## ◐ Look and feel
+
+<div align="center">
+<img src="docs/assets/popup-off.png" alt="Popup with auto-apply off" width="32%">
+&nbsp;
+<img src="docs/assets/popup-on.png" alt="Popup with auto-apply on" width="32%">
+</div>
+
+<br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/setup-dark.png">
+  <img src="docs/assets/setup-light.png" alt="Profile setup page" width="100%">
+</picture>
+
+<p align="center"><sub>The setup page follows your system theme: light or dark. Everything autosaves as you type.</sub></p>
+
+<br>
+
+<img src="docs/assets/autofill-page.png" alt="A multi-step career page filled by auto-apply mode, with the LazyForm bar in the corner" width="100%">
+
+<p align="center"><sub>Auto-apply mode filling step 2 of a career page: two jobs and an education block, each in the right slot.</sub></p>
+
+<br>
+
