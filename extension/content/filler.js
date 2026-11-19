@@ -1000,3 +1000,59 @@
     }
   }
 
+  function isFilledEl(el) {
+    if (el.type === 'checkbox' || el.type === 'radio') return el.name ? !!document.querySelector(`input[name="${CSS.escape(el.name)}"]:checked`) : el.checked;
+    if (el.tagName === 'SELECT') return el.selectedIndex > 0;
+    if (el.type === 'file') return el.files && el.files.length > 0;
+    return !!String(el.value || '').trim();
+  }
+
+  // Quick count used by auto-detect and the popup
+  function scan() {
+    const fields = buildFields();
+    const keys = new Set();
+    fields.forEach((f) => {
+      if (f.kind === 'file') return;
+      const c = classify(f.el, f.d, sectionOf(f.el));
+      if (c) keys.add(c.key);
+    });
+    const hasPassword = !!document.querySelector('input[type=password]');
+    return {
+      fields: fields.length,
+      recognised: keys.size,
+      keys: [...keys],
+      looksLikeApplication: keys.size >= 3 && !(hasPassword && fields.length < 6),
+    };
+  }
+
+  // Answers the user typed themselves into questions LazyForm didn't recognise
+  function capture() {
+    const fields = buildFields();
+    const out = [];
+    return loadData().then(({ profile }) => {
+      const values = flatten(profile);
+      const qa = profile.customQA || [];
+      for (const f of fields) {
+        if (f.kind === 'file' || !isFilled(f)) continue;
+        if (isSensitive(f.d.display + ' ' + f.d.attrs) || (f.el.type || '') === 'password') continue;
+        plan([f], profile);
+        const r = resolve(f, values, qa, profile);
+        if (r) continue; // a known profile field — better saved in the profile itself
+        let answer = '';
+        if (f.kind === 'select') answer = f.el.options[f.el.selectedIndex]?.text || '';
+        else if (f.kind === 'radio' || f.kind === 'checkgroup') answer = f.members.filter((m) => m.checked).map(optionLabel).join(', ');
+        else if (f.kind === 'checkbox') { if (CONSENT_RE.test(f.d.label)) continue; answer = f.el.checked ? 'Yes' : 'No'; }
+        else if (f.kind === 'combo' && f.el.tagName !== 'INPUT') answer = textOf(f.el);
+        else answer = f.el.value;
+        answer = String(answer).trim();
+        const question = f.d.display;
+        if (!answer || !question || question === 'Unlabelled field' || answer.length > 4000) continue;
+        if (/^\d{9,}$/.test(answer.replace(/[\s-]/g, ''))) continue; // long digit strings look like ID / account numbers
+        out.push({ question, answer });
+      }
+      return out;
+    });
+  }
+
+  window.__lazyForm = { fill, scan, capture, showPanel: () => lastResult && showPanel(lastResult), version: 2 };
+})();
