@@ -224,3 +224,73 @@ function toggle(id, label, desc, checked, onChange) {
   return el('div', { class: 'toggle' }, input, el('div', {}, el('label', { htmlFor: id, text: label }), el('p', { id: id + '-d', text: desc })));
 }
 
+function renderSettings() {
+  const wrap = el('div');
+  wrap.append(
+    toggle('s-auto', 'Allow auto-apply mode', 'Auto-apply mode keeps filling as an application moves through its steps and pages, so Chrome needs to let LazyForm work on the job sites you open. It only ever runs in the tab where you switch it on, and stops when you press Stop or close the tab.', renderSettings.granted,
+      async (on, input) => {
+        if (on) {
+          const ok = await chrome.permissions.request({ origins: SITE_ORIGINS });
+          if (!ok) { input.checked = false; toast('Permission not granted — “Fill this page” still works.'); return; }
+          toast('Auto-apply mode allowed');
+        } else {
+          await chrome.permissions.remove({ origins: SITE_ORIGINS }).catch(() => {});
+          toast('Auto-apply mode turned off everywhere');
+        }
+      }),
+    toggle('s-over', 'Replace answers already on the form', 'Off by default, so LazyForm never overwrites something you or the site already filled in.', settings.overwrite,
+      (on) => { settings.overwrite = on; scheduleSave(); }),
+    toggle('s-hl', 'Highlight filled fields', 'Green outline for filled fields, dashed amber for ones you should check.', settings.highlight,
+      (on) => { settings.highlight = on; scheduleSave(); }),
+    toggle('s-panel', 'Show a summary on the page after filling', 'Lists the questions left for you, with a jump-to link for each.', settings.showPanel,
+      (on) => { settings.showPanel = on; scheduleSave(); }),
+  );
+  const df = el('select', { id: 's-date', 'aria-describedby': 's-date-d' });
+  [['auto', 'Automatic (from your browser language)'], ['DD/MM/YYYY', 'DD/MM/YYYY — e.g. 01/12/2026 for 1 December'], ['MM/DD/YYYY', 'MM/DD/YYYY — e.g. 12/01/2026 for 1 December']]
+    .forEach(([v, t]) => df.append(el('option', { value: v, text: t })));
+  df.value = settings.dateFormat || 'auto';
+  df.addEventListener('change', () => { settings.dateFormat = df.value; scheduleSave(); });
+  wrap.append(el('div', { class: 'field', style: 'margin-top:14px' },
+    el('label', { htmlFor: 's-date', text: 'Date format for plain text date boxes' }), df,
+    el('span', { class: 'hint', id: 's-date-d', text: 'Used only when a form doesn’t show which format it wants. Date pickers are always filled correctly.' })));
+  wrap.append(el('h3', { class: 'sub-h', text: 'Keyboard shortcuts' }),
+    el('p', { class: 'blurb' }, 'Fill this page: ', el('kbd', { id: 'kbd2', text: 'Alt+Shift+F' }), ' · Auto-apply on/off: ', el('kbd', { id: 'kbd3', text: 'Alt+Shift+Y' }), '. ',
+      el('button', { type: 'button', class: 'btn ghost small', text: 'Change shortcut', onclick: () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }) })));
+
+  const importInput = el('input', { type: 'file', accept: 'application/json,.json', hidden: true });
+  importInput.addEventListener('change', async () => {
+    const f = importInput.files[0];
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      if (!data || typeof data !== 'object' || !data.profile) throw new Error('Not an LazyForm backup');
+      profile = data.profile;
+      const { autoDetect, ...imported } = data.settings || {};
+      settings = { ...DEFAULT_SETTINGS, ...imported };
+      if (!['auto', 'DD/MM/YYYY', 'MM/DD/YYYY'].includes(settings.dateFormat)) settings.dateFormat = 'auto';
+      resume = data.resume && typeof data.resume.dataUrl === 'string' && data.resume.dataUrl.startsWith('data:') ? data.resume : resume;
+      await chrome.storage.local.set({ profile, settings, ...(resume ? { resume } : {}) });
+      render();
+      toast('Backup imported');
+    } catch (e) { toast('Couldn’t import: ' + e.message); }
+    importInput.value = '';
+  });
+
+  wrap.append(el('div', { class: 'row-actions' },
+    el('button', { type: 'button', class: 'btn', text: 'Export backup', onclick: () => {
+      const blob = new Blob([JSON.stringify({ app: 'LazyForm', version: 1, profile, settings, resume }, null, 2)], { type: 'application/json' });
+      const a = el('a', { href: URL.createObjectURL(blob), download: 'lazyform-profile.json' });
+      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } }),
+    el('button', { type: 'button', class: 'btn', text: 'Import backup', onclick: () => importInput.click() }),
+    importInput,
+    el('button', { type: 'button', class: 'btn ghost danger', text: 'Delete all my data', onclick: async () => {
+      if (!confirm('Delete your whole LazyForm profile, resume and saved answers from this browser? This can’t be undone.')) return;
+      await chrome.storage.local.clear();
+      profile = {}; settings = { ...DEFAULT_SETTINGS }; resume = null;
+      render(); toast('All data deleted');
+    } }),
+  ));
+  return wrap;
+}
+
