@@ -36,3 +36,12 @@
       .filter((w) => w.length > 1 && !STOP.has(w))
       .map((w) => w.replace(/(ing|ed|es|s)$/, ''));
 
+  function similarity(a, b) {
+    const A = new Set(tokens(a));
+    const B = new Set(tokens(b));
+    if (!A.size || !B.size) return 0;
+    let inter = 0;
+    A.forEach((t) => B.has(t) && inter++);
+    return inter / Math.min(A.size, B.size) * (inter / Math.max(A.size, B.size)) ** 0.25;
+  }
+
