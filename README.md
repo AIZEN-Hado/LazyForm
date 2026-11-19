@@ -211,3 +211,53 @@ npm run test:release # packages the zip and runs the release checklist
 
 <br>
 
+## ▤ Project structure
+
+```text
+LazyForm/
+├── extension/                 ← the Chrome extension (load this folder)
+│   ├── manifest.json
+│   ├── background.js          auto-apply sessions, shortcuts
+│   ├── popup.html · popup/    toolbar popup
+│   ├── options.html · options/  profile setup page
+│   ├── content/
+│   │   ├── filler.js          detect → understand → match → fill
+│   │   └── session.js         auto-apply bar, watches for new steps
+│   ├── lib/run.js             injection helpers
+│   └── shared/tokens.css      design tokens (light + dark)
+├── tests/                     Playwright end-to-end suites + fixtures
+├── docs/
+│   ├── diagrams/              Canvas 2D source for every README graphic
+│   └── assets/                rendered diagrams and screenshots
+└── dist/lazyform-extension.zip
+```
+
+<br>
+
+## ◇ Known limits
+
+- Very custom widgets (drag-to-pick dates, rich-text editors, some Workday dropdowns) may need a manual pick. They're outlined in amber.
+- Workday's split day / month / year date boxes may need typing by hand.
+- Chrome blocks every extension on `chrome://` pages and the Web Store.
+- Data is stored unencrypted in your Chrome profile. On a shared computer, use your own Chrome profile.
+
+<br>
+
+## ✎ Roadmap
+
+- [ ] Chrome Web Store listing
+- [ ] Per-job tailored cover letters
+- [ ] Workday split-date support
+- [ ] Firefox build
+
+<br>
+
+<div align="center">
+
+<img src="extension/icons/icon128.png" width="56" alt="">
+
+**LazyForm** · made by [Yashsingh Chauhan](https://github.com/AIZEN-Hado) · [MIT License](LICENSE)
+
+<sub>If it saved you an evening of copy-pasting, a ⭐ helps others find it.</sub>
+
+</div>
