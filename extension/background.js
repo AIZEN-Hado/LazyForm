@@ -145,3 +145,55 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   return true;
 });
 
+// ------------------------------------------------------------------ lifecycle
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+  if (reason === 'install') {
+    const { profile } = await chrome.storage.local.get('profile');
+    if (!profile) chrome.runtime.openOptionsPage();
+  }
+  // v1.0 registered an always-on page script; v1.1 no longer uses it
+  try { await chrome.scripting.unregisterContentScripts({ ids: ['lazyform-detector'] }); } catch {}
+  const { settings } = await chrome.storage.local.get('settings');
+  if (settings && 'autoDetect' in settings) {
+    delete settings.autoDetect;
+    await chrome.storage.local.set({ settings });
+  }
+});
+
+// Removing the site permission ends every session
+chrome.permissions.onRemoved.addListener(() => stopAll());
+// Permission just granted from the popup's "Start auto-apply" (the popup may have closed)
+chrome.permissions.onAdded.addListener(async () => {
+  const { pendingStart } = await chrome.storage.session.get('pendingStart');
+  await chrome.storage.session.remove('pendingStart');
+  if (pendingStart && Date.now() - pendingStart.at < 120000) withLock(() => startSession(pendingStart.tabId));
+});
+
+async function flash(tabId, text, color) {
+  try {
+    await chrome.action.setBadgeBackgroundColor({ tabId, color });
+    await chrome.action.setBadgeText({ tabId, text });
+    setTimeout(async () => {
+      const on = !!(await getSessions())[tabId];
+      chrome.action.setBadgeText({ tabId, text: on ? 'ON' : '' }).catch(() => {});
+    }, 5000);
+  } catch {}
+}
+
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  if (!tab?.id) return;
+  if (command === 'fill-form') {
+    try {
+      const res = await fillTab(tab.id);
+      await flash(tab.id, String(res.filled.length), '#16a34a');
+    } catch {
+      await flash(tab.id, '!', '#b91c1c');
+    }
+  }
+  if (command === 'toggle-auto') {
+    if ((await getSessions())[tab.id]) return stopSession(tab.id);
+    const res = await startSession(tab.id);
+    if (res.needsPermission) chrome.runtime.openOptionsPage();
+    else if (!res.ok) flash(tab.id, '!', '#b91c1c');
+  }
+});
