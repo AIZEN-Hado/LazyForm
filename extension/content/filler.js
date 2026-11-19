@@ -396,3 +396,25 @@
       .filter((w) => /^[A-Z][a-zA-Z0-9&'.-]+$/.test(w) && !/^(I|I'm|LinkedIn|GitHub|US|USA|UK|EU|CV|GPA|CTC|Yes|No|Please|If|What|Why|How|When|Where|Which)$/.test(w))
       .map((w) => w.toLowerCase().replace(/[.']+$/, ''));
 
+  function customAnswer(question, qa) {
+    let best = null;
+    const newNouns = properNouns(question);
+    for (const item of qa || []) {
+      if (!item || !item.question || !item.answer) continue;
+      const savedNouns = properNouns(item.question);
+      // A saved answer about one company must never be reused for another
+      if (savedNouns.some((n) => !norm(question).includes(n))) continue;
+      // Generic saved question ("…work here?") can match a company-specific one ("…work at Globex?")
+      const strip = (q, nouns) => nouns.reduce((t, n) => t.replace(new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'), ' '), q);
+      const a = strip(question, newNouns).replace(/\b(here|there|us|our company|this company|at|join)\b/gi, ' ');
+      const b = strip(item.question, savedNouns).replace(/\b(here|there|us|our company|this company|at|join)\b/gi, ' ');
+      const nq = norm(question);
+      const nk = norm(item.question);
+      let s = similarity(a, b);
+      if (nq && nk && (nq === nk || (nk.length > 12 && nq.includes(nk)))) s = Math.max(s, 0.95);
+      if (!best || s > best.score) best = { answer: item.answer, score: s, question: item.question };
+    }
+    return best;
+  }
+
+  // ---------------------------------------------------------------------------
