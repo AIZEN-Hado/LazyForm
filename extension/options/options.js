@@ -324,3 +324,64 @@ function updateNavCounts() {
   });
 }
 
+// ---------------------------------------------------------------- page
+function render() {
+  const form = $('#profile');
+  form.replaceChildren();
+  const nav = $('#nav');
+  nav.replaceChildren();
+  SECTIONS.forEach((sec) => {
+    nav.append(el('a', { href: '#' + sec.id }, el('span', { text: sec.title }), el('span', { class: 'count' })));
+    const body = sec.fields ? renderSimple(sec)
+      : sec.repeat ? renderRepeat(sec)
+      : sec.special === 'qa' ? renderQA()
+      : sec.special === 'resume' ? renderResume()
+      : renderSettings();
+    form.append(el('section', { class: 'card', id: sec.id, 'aria-labelledby': sec.id + '-h' },
+      el('h2', { id: sec.id + '-h', text: sec.title }),
+      sec.blurb ? el('p', { class: 'blurb', text: sec.blurb }) : null,
+      body));
+  });
+  updateMeter();
+  const spy = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      nav.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id));
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  form.querySelectorAll('section').forEach((s) => spy.observe(s));
+}
+
+async function init() {
+  const data = await chrome.storage.local.get(['profile', 'settings', 'resume']);
+  profile = data.profile || {};
+  const { autoDetect, ...saved } = data.settings || {};
+  settings = { ...DEFAULT_SETTINGS, ...saved };
+  resume = data.resume || null;
+  renderSettings.granted = await chrome.permissions.contains({ origins: SITE_ORIGINS });
+  render();
+  try {
+    const cmds = await chrome.commands.getAll();
+    const sc = cmds.find((c) => c.name === 'fill-form')?.shortcut || 'not set';
+    const sa = cmds.find((c) => c.name === 'toggle-auto')?.shortcut || 'not set';
+    $('#kbd').textContent = sc;
+    const k2 = $('#kbd2'); if (k2) k2.textContent = sc;
+    const k3 = $('#kbd3'); if (k3) k3.textContent = sa;
+  } catch {}
+  if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
+
+  // pick up answers saved from the popup while this page is open
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes.profile) return;
+    const next = changes.profile.newValue || {};
+    if (JSON.stringify(next) === JSON.stringify(profile)) return;
+    if (!dirty && !document.activeElement?.closest?.('form')) { profile = next; render(); return; }
+    if (JSON.stringify(next.customQA || []) !== JSON.stringify(profile.customQA || [])) {
+      profile.customQA = next.customQA || [];
+      renderQA.redraw?.();
+    }
+  });
+}
+
+window.addEventListener('pagehide', () => { if (dirty) saveNow(); });
+init();
