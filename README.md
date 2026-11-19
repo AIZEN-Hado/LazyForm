@@ -175,3 +175,20 @@ flowchart LR
 
 <br>
 
+## ⛨ Privacy
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/privacy-dark.png">
+  <img src="docs/assets/privacy-light.png" alt="Profile, resume and saved answers stay in the browser; no cloud" width="100%">
+</picture>
+
+| Permission | Why it's needed |
+| --- | --- |
+| `storage` | Keep your profile on this device |
+| `activeTab` + `scripting` | Fill the current tab, only when you click the icon or use a shortcut |
+| *Optional:* site access | Asked only when you first start auto-apply, so it can keep filling as pages change. Turn it off in **Settings → Allow auto-apply mode**. |
+
+**Backups:** *Settings → Export backup* saves a JSON copy of your profile. Keep it private: it contains your personal details. *Import backup* restores it on a new computer.
+
+<br>
+
