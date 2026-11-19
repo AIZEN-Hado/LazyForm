@@ -84,3 +84,64 @@ async function stopAll() {
   await Promise.all(Object.keys(sessions).map((id) => stopSession(Number(id))));
 }
 
+// ------------------------------------------------------------------ follow the tab
+chrome.tabs.onUpdated.addListener((tabId, info) => withLock(async () => {
+  if (info.status !== 'complete' && !info.url) return;
+  const sessions = await getSessions();
+  const s = sessions[tabId];
+  if (!s) return;
+  if (Date.now() - (s.last || s.started) > IDLE_LIMIT_MS) return stopSession(tabId);
+  if (info.url) { s.needs = {}; await saveSessions(sessions); }
+  if (info.status === 'complete') injectSession(tabId, s);
+}));
+
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  const sessions = await getSessions();
+  if (sessions[tabId]) { delete sessions[tabId]; await saveSessions(sessions); }
+});
+
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (sender.id !== chrome.runtime.id) return;
+  withLock(async () => {
+    // From the popup / settings (our own extension pages)
+    if (sender.url && sender.url.startsWith(chrome.runtime.getURL(''))) {
+      if (msg.type === 'popup:start') { await chrome.storage.session.remove('pendingStart'); return reply(await startSession(msg.tabId)); }
+      if (msg.type === 'popup:pendingStart') {
+        await chrome.storage.session.set({ pendingStart: { tabId: msg.tabId, at: Date.now() } });
+        return reply({ ok: true });
+      }
+      if (msg.type === 'popup:stop') { await stopSession(msg.tabId); return reply({ ok: true }); }
+      if (msg.type === 'popup:status') {
+        const s = (await getSessions())[msg.tabId];
+        return reply(s ? { active: true, ...totalsOf(s) } : { active: false });
+      }
+      return reply(null);
+    }
+    // From session.js inside the session tab
+    const tabId = sender.tab.id;
+    const sessions = await getSessions();
+    const s = sessions[tabId];
+    if (!s) return reply(null);
+    if (msg.type === 'session:stop') { await stopSession(tabId); return reply({ ok: true }); }
+    if (msg.type === 'session:allowSite' && sender.frameId === 0) {
+      const origin = new URL(sender.url).origin;
+      if (/^https?:/.test(origin) && !s.origins.includes(origin)) s.origins.push(origin);
+      s.last = Date.now();
+      await saveSessions(sessions);
+      await injectSession(tabId, s);
+      return reply({ ok: true });
+    }
+    if (msg.type === 'session:filled') {
+      s.filled += Math.max(0, Math.min(500, Number(msg.filled) || 0));
+      s.needs = s.needs || {};
+      s.needs[sender.frameId] = Math.max(0, Math.min(500, Number(msg.needs) || 0));
+      if (msg.filled) s.last = Date.now();
+      await saveSessions(sessions);
+      try { await chrome.tabs.sendMessage(tabId, { type: 'session:totals', totals: totalsOf(s) }, { frameId: 0 }); } catch {}
+      return reply({ ok: true });
+    }
+    reply(null);
+  });
+  return true;
+});
+
