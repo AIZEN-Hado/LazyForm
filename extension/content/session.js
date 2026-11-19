@@ -130,3 +130,28 @@
       : 'New site — fill here too?';
   }
 
+  // --------------------------------------------------------------- control
+  function start(nextCfg) {
+    cfg = nextCfg;
+    totals = nextCfg.totals || totals;
+    if (siteAllowed()) {
+      active = true;
+      observe();
+      lastRun = 0;
+      schedule();
+    } else {
+      active = false;
+      observer?.disconnect();
+      observer = null;
+    }
+    renderBanner();
+  }
+
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (sender.id !== chrome.runtime.id || sender.tab) return; // only our background worker
+    if (msg?.type === 'session:stop') stopLocal();
+    if (msg?.type === 'session:totals' && isTop) { totals = msg.totals; if (banner) renderBanner(); }
+  });
+
+  window.__lazyFormSession = { start, stop: stopLocal };
+})();
