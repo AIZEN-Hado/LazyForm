@@ -195,3 +195,51 @@ function pipeline(t, name) {
   });
 }
 
+/* ---------------- 4. auto-apply flow ---------------- */
+function autoflow(t, name) {
+  const W = 1600, H = 720, g = make(name, W, H, t);
+  text(g, 'Auto-apply mode, step by step', 64, 76, { size: 30, weight: 700, color: t.text, track: -1 });
+  text(g, 'Switch it on once. It keeps filling until you press Stop.', 64, 108, { size: 16, color: t.text2 });
+
+  const node = (x, y, w, label, sub, opt = {}) => {
+    const h = 74; rr(g, x - w / 2, y - h / 2, w, h, opt.round ? h / 2 : 18);
+    g.fillStyle = opt.dark ? t.ink : t.panel; g.fill(); if (!opt.dark) { g.strokeStyle = t.line; g.stroke(); }
+    if (opt.orb) orb(g, x - w / 2 + 34, y, 16);
+    const tx = opt.orb ? x - w / 2 + 62 : x;
+    const al = opt.orb ? 'left' : 'center';
+    text(g, label, tx, y - (sub ? 3 : -5), { size: 16, weight: 600, color: opt.dark ? t.inkText : t.text, align: al });
+    if (sub) text(g, sub, tx, y + 18, { size: 12.5, color: opt.dark ? (t === THEMES.light ? '#bdbdbd' : '#4a525c') : t.text2, align: al });
+  };
+  const diamond = (x, y, s, label) => {
+    g.beginPath(); g.moveTo(x, y - s); g.lineTo(x + s * 1.5, y); g.lineTo(x, y + s); g.lineTo(x - s * 1.5, y); g.closePath();
+    g.fillStyle = t.bg; g.fill(); g.strokeStyle = t.text3; g.lineWidth = 1.6; g.stroke();
+    label.split('\n').forEach((l, i, a) => text(g, l, x, y + 5 + (i - (a.length - 1) / 2) * 18, { size: 13.5, weight: 600, color: t.text, align: 'center' }));
+  };
+  const c = t.text3;
+  node(210, 230, 260, 'Start auto-apply', 'popup · Alt+Shift+Y', { dark: true, round: true });
+  node(560, 230, 300, 'Fill what is on screen', 'new fields only', { orb: true });
+  node(940, 230, 270, 'You press Next', 'or “Add another”');
+  node(1320, 230, 290, 'New step appears', 'MutationObserver sees it');
+  arrow(g, 340, 230, 410, 230, c); arrow(g, 710, 230, 805, 230, c); arrow(g, 1075, 230, 1175, 230, c);
+  arrow(g, 1320, 267, 1320, 300, c); g.strokeStyle = c; g.lineWidth = 1.8; g.beginPath(); g.moveTo(1320, 300); g.lineTo(560, 300); g.stroke(); arrow(g, 560, 300, 560, 267, c);
+  text(g, 'loop', 940, 292, { size: 12.5, weight: 600, color: t.text3, align: 'center' });
+
+  node(560, 430, 300, 'Next page loads', 'same tab');
+  arrow(g, 560, 340, 560, 393, c, { dash: true });
+  diamond(980, 430, 58, 'Same site or\njob platform?');
+  arrow(g, 710, 430, 893, 430, c);
+  node(1380, 430, 300, 'Keep filling', 'Workday · Greenhouse · Lever …', { orb: true });
+  arrow(g, 1067, 430, 1230, 430, c); text(g, 'yes', 1140, 418, { size: 13, weight: 600, color: t.ok, align: 'center' });
+  node(980, 600, 330, 'Pause and ask', '“Fill on this site?” (one click)');
+  arrow(g, 980, 488, 980, 563, c); text(g, 'no', 996, 530, { size: 13, weight: 600, color: t.warn });
+
+  // stop lane
+  rr(g, 64, 520, 600, 150, 22); g.fillStyle = t.panel; g.fill();
+  text(g, 'It stops when…', 92, 562, { size: 16, weight: 650, color: t.text });
+  ['you press Stop (bar or popup)', 'you close the tab', '3 hours pass with no activity'].forEach((s, i) => {
+    g.beginPath(); g.arc(102, 594 + i * 26, 6, 0, 7); g.fillStyle = t.bad; g.fill();
+    text(g, s, 120, 599 + i * 26, { size: 14.5, color: t.text2 });
+  });
+  text(g, 'Never submits. Never touches other tabs.', 360, 562, { size: 13, weight: 600, color: t.text3 });
+}
+
