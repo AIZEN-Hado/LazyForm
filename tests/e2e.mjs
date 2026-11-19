@@ -200,3 +200,28 @@ try {
     await r.popup.close(); await page.close();
   }
 
+  // ------------------------------------------------------------ restricted page
+  {
+    const popup = await ctx.newPage();
+    const tabId = await sw.evaluate(async () => (await chrome.tabs.create({ url: 'chrome://version' })).id);
+    await popup.goto(`chrome-extension://${extId}/popup.html?tabId=${tabId}`);
+    await popup.waitForSelector('.err', { timeout: 8000 }).catch(() => {});
+    check('Restricted page shows a clear message', (await popup.textContent('#view')).includes('Can’t fill this page'));
+    await popup.close();
+  }
+
+  // ------------------------------------------------------------ service-worker restart
+  {
+    const before = await sw.evaluate(() => chrome.storage.local.get('profile'));
+    check('Data persists in storage (worker-independent)', before.profile?.email === PROFILE.email);
+  }
+} catch (e) {
+  check('Unexpected error', false, e.stack);
+} finally {
+  await ctx.close();
+  servers.forEach((s) => s.kill());
+  const failed = results.filter((r) => !r.ok);
+  fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(results, null, 2));
+  console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
+  process.exit(failed.length ? 1 : 0);
+}
