@@ -157,3 +157,100 @@ try {
   await wait(500);
   check('R5', 'Importing the backup restores the profile', (await sw.evaluate(() => chrome.storage.local.get('profile'))).profile?.email === 'priya@example.com');
 
+  // ---- filling robustness
+  // An extension page can use the same chrome.* APIs; it survives worker restarts
+  async function liveSW() {
+    const p = await ctx.newPage();
+    await p.goto(`chrome-extension://${id}/popup.html`);
+    return { evaluate: async (fn, arg) => { try { return await p.evaluate(fn, arg); } finally { await p.close(); } } };
+  }
+  async function tabOf(urlPart) { return (await liveSW()).evaluate(async (u) => (await chrome.tabs.query({})).find((t) => t.url?.includes(u))?.id, urlPart); }
+  async function popupFill(tabId) {
+    const p = await ctx.newPage(); watch(p, 'popup');
+    await p.goto(`chrome-extension://${id}/popup.html?tabId=${tabId}`);
+    await p.waitForSelector('#fill');
+    await p.waitForFunction(() => !document.querySelector('.status')?.textContent.includes('Checking'));
+    return p;
+  }
+
+  const empty = await ctx.newPage(); await empty.goto('http://127.0.0.1:8901/empty.html');
+  const pe = await popupFill(await tabOf('empty.html'));
+  check('U2', 'Page with no form: popup says so', /No form fields/.test(await pe.textContent('.status')));
+  await pe.click('#fill'); await pe.waitForSelector('.empty h2');
+  check('U3', 'Clicking Fill there explains nothing to fill', (await pe.textContent('.empty h2')) === 'No form found');
+  await pe.close(); await empty.close();
+
+  const xss = await ctx.newPage(); watch(xss, 'xss page');
+  await xss.goto('http://127.0.0.1:8901/xss.html');
+  const px = await popupFill(await tabOf('xss.html'));
+  await px.click('#fill'); await px.waitForSelector('.summary');
+  await wait(500);
+  check('S9', 'Hostile label text shown safely in popup + on-page panel', !(await xss.evaluate(() => window.__pwned)) && !(await px.evaluate(() => window.__pwned)) && /img src=x/.test(await px.textContent('.list')));
+  await px.close(); await xss.close();
+
+  const bigp = await ctx.newPage(); await bigp.goto('http://127.0.0.1:8901/big.html');
+  const pb = await popupFill(await tabOf('big.html'));
+  const t0 = Date.now(); await pb.click('#fill'); await pb.waitForSelector('.summary', { timeout: 30000 });
+  const ms = Date.now() - t0;
+  check('F1', '150-field form fills in under 3 seconds', ms < 3000, `${ms} ms, ${await pb.textContent('.stat.ok b')} filled`);
+  await pb.close(); await bigp.close();
+
+  // ---- auto-apply: worker restart, busy page cost, permission removal
+  const page = await ctx.newPage(); watch(page, 'career');
+  await page.goto('http://127.0.0.1:8901/career.html');
+  const tabId = await tabOf('career.html');
+  const pp = await ctx.newPage(); watch(pp, 'popup');
+  await pp.goto(`chrome-extension://${id}/popup.html?tabId=${tabId}`);
+  await pp.click('#auto-start'); await pp.waitForSelector('#auto-stop');
+  await page.waitForFunction(() => document.getElementById('em').value !== '', null, { timeout: 8000 });
+  // kill the background worker (Chrome does this after ~30 s idle)
+  let stopped = false;
+  try {
+    const cdp = await ctx.newCDPSession(page);
+    await cdp.send('ServiceWorker.enable');
+    await cdp.send('ServiceWorker.stopAllWorkers');
+    stopped = true;
+  } catch {}
+  await wait(1500);
+  await page.click('#next1');
+  await page.waitForFunction(() => document.getElementById('t0').value !== '', null, { timeout: 8000 }).catch(() => {});
+  await page.click('#next2'); await wait(300);
+  await page.click('#cont'); await page.waitForURL('**/career2.html');
+  await page.waitForFunction(() => document.getElementById('li').value !== '', null, { timeout: 10000 }).catch(() => {});
+  check('W1', 'Auto-apply survives Chrome putting the background worker to sleep', stopped && (await page.inputValue('#li')) === PROFILE.linkedin, stopped ? '' : 'could not stop worker');
+
+  // busy page: CPU cost while auto-apply is on
+  const busy = await ctx.newPage(); await busy.goto('http://127.0.0.1:8901/busy.html');
+  const busyTab = await tabOf('busy.html');
+  const cdpB = await ctx.newCDPSession(busy); await cdpB.send('Performance.enable');
+  const scriptTime = async () => (await cdpB.send('Performance.getMetrics')).metrics.find((m) => m.name === 'ScriptDuration').value;
+  let a = await scriptTime(); await wait(6000); const off = (await scriptTime()) - a;
+  const pb2 = await ctx.newPage();
+  await pb2.goto(`chrome-extension://${id}/popup.html?tabId=${busyTab}`);
+  await pb2.click('#auto-start'); await pb2.waitForSelector('#auto-stop');
+  await wait(1500);
+  a = await scriptTime(); await wait(6000); const on = (await scriptTime()) - a;
+  check('F2', 'Auto-apply adds little CPU on a constantly-changing page', on - off < 0.6, `page scripts ${off.toFixed(2)}s → ${on.toFixed(2)}s per 6s`);
+  await pb2.click('#auto-stop'); await pb2.close(); await busy.close();
+
+  // Removing permission → sessions end: can't be simulated headless (test build has fixed host access)
+  check('W2', 'Removing site permission stops auto-apply everywhere', null, 'needs a real Chrome: toggle off in Settings while a session runs');
+
+  // extension update/reload keeps data
+  const before = (await (await liveSW()).evaluate(() => chrome.storage.local.get('profile'))).profile?.email;
+  await (await liveSW()).evaluate(() => { setTimeout(() => chrome.runtime.reload(), 50); }).catch(() => {});
+  await wait(3000);
+  const after = (await (await liveSW()).evaluate(() => chrome.storage.local.get('profile')).catch(() => ({}))).profile?.email;
+  check('W3', 'Updating / reloading the extension keeps your profile', before && before === after, `${before} → ${after}`);
+
+  check('E1', 'No JavaScript errors in extension pages or filled pages during all checks', errors.length === 0, errors.slice(0, 3).join(' | '));
+  await ctx.close();
+} catch (e) {
+  check('X', 'Unexpected error', false, e.stack);
+} finally {
+  servers.forEach((s) => s.kill());
+  ['big.html', 'busy.html', 'xss.html', 'empty.html'].forEach((f) => fs.rmSync(path.join(ROOT, 'tests', 'fixtures2', f), { force: true }));
+  fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(results, null, 2));
+  const failed = results.filter((r) => r.ok === false);
+  console.log(`\n${results.filter((r) => r.ok).length}/${results.length} passed, ${failed.length} failed`);
+}
