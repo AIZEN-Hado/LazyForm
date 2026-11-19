@@ -204,3 +204,33 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Working out what a control is asking for
+  // ---------------------------------------------------------------------------
+  function textOf(node, skip) {
+    if (!node) return '';
+    let s = '';
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+      acceptNode(n) {
+        if (n.nodeType === 1) {
+          if (skip && (n === skip || skip.contains?.(n))) return NodeFilter.FILTER_REJECT;
+          if (/^(SCRIPT|STYLE|SELECT|OPTION|TEXTAREA|BUTTON|SVG|NOSCRIPT)$/i.test(n.tagName)) return NodeFilter.FILTER_REJECT;
+          if (n.hasAttribute?.(UI_ATTR)) return NodeFilter.FILTER_REJECT;
+          if (n.getAttribute?.('role') === 'listbox') return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_SKIP;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    while (walker.nextNode()) s += ' ' + walker.currentNode.nodeValue;
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  const byIds = (ids, rootNode) =>
+    (ids || '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((id) => (rootNode.getElementById ? rootNode.getElementById(id) : document.getElementById(id)))
+      .filter(Boolean)
+      .map((n) => textOf(n))
+      .join(' ');
+
