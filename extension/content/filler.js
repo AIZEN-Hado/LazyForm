@@ -328,3 +328,25 @@
     };
   }
 
+  const SECTION_HEAD = 'h1,h2,h3,h4,h5,h6,legend,[role="heading"],[data-automation-id*="Header"],[data-automation-id*="header"]';
+  const sectionCache = new WeakMap();
+  function sectionOf(el) {
+    let node = el.parentElement;
+    for (let depth = 0; node && depth < 10; depth++, node = node.parentElement) {
+      if (sectionCache.has(node)) return sectionCache.get(node);
+      let head = '';
+      const own = node.querySelector(':scope > ' + SECTION_HEAD.split(',').join(', :scope > ')) || (node.tagName === 'FIELDSET' && node.querySelector('legend'));
+      if (own) head = norm(textOf(own));
+      if (!head && node.getAttribute('aria-labelledby')) head = norm(byIds(node.getAttribute('aria-labelledby'), node.getRootNode()));
+      if (!head && node.getAttribute('aria-label')) head = norm(node.getAttribute('aria-label'));
+      let kind = null;
+      if (head) {
+        if (/work experience|experience|employment|work history|professional history|previous (job|position|role)s?|positions? held/.test(head)) kind = 'experience';
+        else if (/education|academic|school|universit|qualification|degree/.test(head)) kind = 'education';
+      }
+      if (kind) { sectionCache.set(node, kind); return kind; }
+      if (node === document.body) break;
+    }
+    return null;
+  }
+
