@@ -144,3 +144,40 @@ function renderRepeat(sec) {
   return wrap;
 }
 
+function renderQA() {
+  const wrap = el('div');
+  const list = el('div');
+  const draw = () => {
+    list.replaceChildren();
+    const items = (profile.customQA = profile.customQA || []);
+    if (!items.length) {
+      list.append(el('div', { class: 'empty' },
+        'Nothing saved yet. Add answers for questions like “Why do you want to work here?”, or after filling a form, use ',
+        el('strong', { text: 'Save my new answers' }), ' in the LazyForm popup.'));
+    } else {
+      list.append(el('div', { class: 'qa-head', 'aria-hidden': 'true' }, el('span', { text: 'Question' }), el('span', { text: 'Your answer' }), el('span')));
+    }
+    items.forEach((item, i) => {
+      const q = el('textarea', { rows: 1, placeholder: 'Question wording', 'aria-label': `Question ${i + 1}` });
+      q.value = item.question || '';
+      q.addEventListener('input', () => { item.question = q.value; scheduleSave(); });
+      const a = el('textarea', { rows: 2, placeholder: 'Your answer', 'aria-label': `Answer ${i + 1}` });
+      a.value = item.answer || '';
+      a.addEventListener('input', () => { item.answer = a.value; scheduleSave(); });
+      const rm = el('button', { type: 'button', class: 'btn ghost small danger', text: 'Remove', 'aria-label': `Remove answer ${i + 1}`,
+        onclick: () => { items.splice(i, 1); scheduleSave(); draw(); } });
+      list.append(el('div', { class: 'qa-row' }, q, a, rm));
+    });
+    updateNavCounts();
+  };
+  draw();
+  renderQA.redraw = draw;
+  wrap.append(list, el('button', { type: 'button', class: 'btn', text: '+ Add answer', onclick: () => {
+    profile.customQA.push({ question: '', answer: '' }); scheduleSave(); draw();
+    list.lastElementChild?.querySelector('textarea')?.focus();
+  } }));
+  return wrap;
+}
+
+function fmtSize(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+
