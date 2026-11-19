@@ -23,3 +23,50 @@
 
 <br>
 
+## ✦ Highlights
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### ◉ &nbsp;Auto-apply mode
+Switch it on once per tab. It fills each section, each **Next** step, newly added blocks and the next page, then stops when you say so.
+
+</td>
+<td width="33%" valign="top">
+
+### ◎ &nbsp;Understands questions
+Reads labels, ARIA, placeholders, nearby text and the section heading. Handles "5–10 years" ranges, "I am / I am not" wording and Workday-style pickers.
+
+</td>
+<td width="33%" valign="top">
+
+### ⛨ &nbsp;Private by design
+No server, no analytics, no network calls. Your profile and resume live in `chrome.storage.local` and nowhere else.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### ✓ &nbsp;You stay in control
+It **never submits**, never ticks consent boxes and never overwrites something you typed. Green outline = filled, amber = needs you.
+
+</td>
+<td valign="top">
+
+### ↻ &nbsp;Learns as you go
+Answer a new question yourself, click **Save my new answers**, and it fills that question on the next application.
+
+</td>
+<td valign="top">
+
+### ⌘ &nbsp;Keyboard first
+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> fills the page. <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Y</kbd> toggles auto-apply.
+
+</td>
+</tr>
+</table>
+
+<br>
+
