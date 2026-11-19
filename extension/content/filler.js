@@ -186,3 +186,21 @@
     return true;
   }
 
+  function isUsable(el) {
+    if (el.closest(`[${UI_ATTR}]`)) return false;
+    if (el.disabled || el.getAttribute('aria-disabled') === 'true') return false;
+    const tag = el.tagName;
+    if (tag === 'INPUT') {
+      const type = (el.type || 'text').toLowerCase();
+      if (SKIP_TYPES.has(type)) return false;
+      if (el.readOnly && !el.getAttribute('role')) return false;
+      if (/captcha|recaptcha|honeypot|\bhp\b/i.test(el.name + ' ' + el.id + ' ' + el.className)) return false;
+      if (type === 'radio' || type === 'checkbox' || type === 'file') {
+        // custom-styled controls are often visually hidden; accept if their label shows
+        return isVisible(el) || (el.labels && [...el.labels].some(isVisible)) || isVisible(el.parentElement || el);
+      }
+    }
+    return isVisible(el);
+  }
+
+  // ---------------------------------------------------------------------------
