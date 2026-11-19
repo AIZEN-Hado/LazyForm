@@ -294,3 +294,33 @@ function renderSettings() {
   return wrap;
 }
 
+// ---------------------------------------------------------------- progress
+const CORE = ['firstName', 'lastName', 'email', 'phone', 'city', 'country', 'linkedin', 'yearsExperience', 'skills', 'summary', 'authorizedToWork', 'requireSponsorship'];
+function updateMeter() {
+  let have = CORE.filter((k) => String(profile[k] || '').trim()).length;
+  let total = CORE.length + 3;
+  if ((profile.experience || []).some((x) => x.title || x.company)) have++;
+  if ((profile.education || []).some((x) => x.school)) have++;
+  if (resume) have++;
+  const pct = Math.round((have / total) * 100);
+  $('#meter-pct').textContent = pct + '%';
+  $('#meter-bar').style.width = pct + '%';
+  $('.bar').setAttribute('aria-valuenow', pct);
+  updateNavCounts();
+}
+
+function sectionCount(sec) {
+  if (sec.fields) return `${sec.fields.filter((f) => String(profile[f.key] || '').trim()).length}/${sec.fields.length}`;
+  if (sec.repeat) return String((profile[sec.repeat] || []).length || '');
+  if (sec.special === 'qa') return String((profile.customQA || []).filter((q) => q.question && q.answer).length || '');
+  if (sec.special === 'resume') return resume ? '✓' : '';
+  return '';
+}
+
+function updateNavCounts() {
+  SECTIONS.forEach((sec) => {
+    const c = document.querySelector(`#nav a[href="#${sec.id}"] .count`);
+    if (c) c.textContent = sectionCount(sec);
+  });
+}
+
