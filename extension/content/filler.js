@@ -796,3 +796,24 @@
     return fields;
   }
 
+  function isFilled(f) {
+    const el = f.el;
+    if (f.kind === 'radio' || f.kind === 'checkgroup') return f.members.some((m) => m.checked);
+    if (f.kind === 'checkbox') return el.checked;
+    if (f.kind === 'file') return el.files && el.files.length > 0;
+    if (f.kind === 'select') {
+      const o = el.options[el.selectedIndex];
+      return !!(o && el.selectedIndex > 0 && o.value !== '' && !PLACEHOLDER.test(norm(o.text)));
+    }
+    if (f.kind === 'combo' && el.tagName !== 'INPUT') {
+      const t = norm(textOf(el));
+      return !!t && !PLACEHOLDER.test(t) && !/^select/.test(t);
+    }
+    return !!String(el.value || '').trim();
+  }
+
+  async function loadData() {
+    const { profile = {}, settings = {}, resume = null } = await chrome.storage.local.get(['profile', 'settings', 'resume']);
+    return { profile, settings: { overwrite: false, highlight: true, showPanel: true, ...settings }, resume };
+  }
+
