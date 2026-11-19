@@ -133,3 +133,45 @@ Open a job application
 
 <br>
 
+## ◈ How it works
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-dark.png">
+  <img src="docs/assets/architecture-light.png" alt="Architecture: popup, setup page and shortcuts talk to the background worker, which injects filler.js and session.js into the application tab and reads the profile from chrome.storage.local" width="100%">
+</picture>
+
+<br><br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/pipeline-dark.png">
+  <img src="docs/assets/pipeline-light.png" alt="Fill pipeline: detect, understand, match, fill, review" width="100%">
+</picture>
+
+<br><br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/autoflow-dark.png">
+  <img src="docs/assets/autoflow-light.png" alt="Auto-apply flow: start, fill, next step, loop; new page on same site or job platform keeps filling, otherwise asks first; stops on Stop, tab close or 3 hours idle" width="100%">
+</picture>
+
+<details>
+<summary><b>The same flow as a Mermaid diagram</b></summary>
+
+```mermaid
+flowchart LR
+    A([Start auto-apply]) --> B[Fill new fields]
+    B --> C{New step or block?}
+    C -- yes --> B
+    C -- page changes --> D{Same site or<br/>known job platform?}
+    D -- yes --> B
+    D -- no --> E[Pause: “Fill on this site?”]
+    E -- you click --> B
+    B -. Stop / close tab / 3h idle .-> F([Session ends])
+```
+
+</details>
+
+<sub>All diagrams are drawn with the Canvas 2D API in [`docs/diagrams/diagrams.html`](docs/diagrams/diagrams.html). Run `npm run diagrams` to re-render them.</sub>
+
+<br>
+
