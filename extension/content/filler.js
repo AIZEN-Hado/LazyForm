@@ -842,3 +842,38 @@
     return fields;
   }
 
+  function resolve(f, values, qa, profile) {
+    const question = f.d.display;
+    if (isSensitive(question + ' ' + f.d.attrs)) return { sensitive: true };
+    const cls = f.cls !== undefined ? f.cls : classify(f.el, f.d, sectionOf(f.el));
+    if (f.section) {
+      const list = profile[f.section] || [];
+      const entry = list[f.entryIndex];
+      const noun = f.section === 'experience' ? 'job' : 'education entry';
+      if (!entry) return { key: cls.key, value: '', missing: true, reason: `Your profile has no ${ordinal(f.entryIndex + 1)} ${noun}` };
+      if (f.entryField === '__current') return { key: 'currentlyHere', value: entry.endDate ? 'No' : 'Yes' };
+      const v = entry[f.entryField];
+      if (v == null || String(v).trim() === '') {
+        if (f.entryField === 'endDate' && f.section === 'experience') return { key: cls.key, value: '', quiet: true, reason: 'Current job — no end date' };
+        return { key: cls.key, value: '', missing: true };
+      }
+      return { key: cls.key, value: v };
+    }
+    const custom = customAnswer(question, qa);
+    if (custom && custom.score >= 0.8) return { key: 'custom', value: custom.answer, source: `Saved answer: “${clip(custom.question, 50)}”` };
+    if (cls && !cls.key.startsWith('range') && cls.key !== 'jobDescription' && cls.key !== 'currentlyHere') {
+      const v = values[cls.key];
+      if (v != null && String(v).trim() !== '') return { key: cls.key, value: v };
+      return { key: cls.key, value: '', missing: true };
+    }
+    return null;
+  }
+
+  const ordinal = (n) => n + (['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th');
+
+  // Fields already handled once in this page; auto-apply mode never touches them again,
+  // so a value the user changed or cleared is left alone.
+  const touched = new WeakSet();
+  let lastResult = null;
+  let running = false;
+
