@@ -158,3 +158,45 @@ try {
     await page.close();
   }
 
+  // ------------------------------------------------------------ Lever-style (no <label for>)
+  {
+    const { page, tabId } = await openForm('http://127.0.0.1:8901/lever.html');
+    const r = await fillViaPopup(tabId, 'popup-lever.png');
+    const v = (n) => page.inputValue(`[name="${n}"]`);
+    check('Lever: full name from unlinked label', (await v('name')) === 'Priya Sharma', await v('name'));
+    check('Lever: email/phone/org', (await v('email')) === PROFILE.email && (await v('phone')) === PROFILE.phone && (await v('org')) === 'Example Payments');
+    check('Lever: LinkedIn / GitHub / Portfolio', (await v('urls[LinkedIn]')) === PROFILE.linkedin && (await v('urls[GitHub]')) === PROFILE.github && (await v('urls[Portfolio]')) === PROFILE.portfolio);
+    check('Lever: years-of-experience range select (6 → 5-10)', (await v('cards[exp]')) === '5-10 years', await v('cards[exp]'));
+    check('Lever: relocation radio Yes', await page.isChecked('input[name="cards[reloc]"][value="yes"]'));
+    check('Lever: notice period', (await v('cards[notice]')) === '30 days');
+    check('Lever: country select (India)', (await v('cards[country]')) === 'IN');
+    check('Lever: gender radio Female (not "Male")', await page.isChecked('input[name="eeo[gender]"][value="Female"]'));
+    await page.screenshot({ path: path.join(OUT, 'page-lever.png'), fullPage: true });
+    await r.popup.close(); await page.close();
+  }
+
+  // ------------------------------------------------------------ React app with custom dropdowns
+  {
+    const { page, tabId } = await openForm('http://127.0.0.1:8901/react.html');
+    const r = await fillViaPopup(tabId, 'popup-react.png');
+    const state = JSON.parse(await page.textContent('#state'));
+    check('React: controlled inputs update app state', state.firstName === 'Priya' && state.lastName === 'Sharma' && state.email === PROFILE.email && state.phone === PROFILE.phone, JSON.stringify(state));
+    check('React: date input', state.start === '2026-12-01', state.start);
+    check('React: "years" range select (6 → 5 or more)', state.exp === 'c', state.exp);
+    check('React: authorised radio', state.auth === 'Yes');
+    check('React: searchable combobox picks India', state.country === 'India', state.country);
+    check('React: Workday-style listbox button picks Bachelor\'s', state.degree === "Bachelor's Degree", state.degree);
+    check('React: form NOT submitted', !(await page.evaluate(() => window.__submitted)));
+    await page.screenshot({ path: path.join(OUT, 'page-react.png'), fullPage: true });
+    await r.popup.close(); await page.close();
+  }
+
+  // ------------------------------------------------------------ cross-origin iframe embed
+  {
+    const { page, tabId } = await openForm('http://127.0.0.1:8901/iframe.html');
+    const r = await fillViaPopup(tabId);
+    const frame = page.frames().find((f) => f.url().includes(':8902/'));
+    check('Iframe: fills a cross-origin embedded form', (await frame.inputValue('#email')) === PROFILE.email && (await frame.inputValue('#first_name')) === 'Priya');
+    await r.popup.close(); await page.close();
+  }
+
