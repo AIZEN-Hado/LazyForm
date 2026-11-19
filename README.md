@@ -192,3 +192,22 @@ flowchart LR
 
 <br>
 
+## ✓ Tested in a real browser
+
+Every check loads the real extension into Chromium with Playwright and drives it like a user would.
+
+| Suite | Checks | Covers |
+| --- | :---: | --- |
+| `npm run test:fill` | **44** | Greenhouse-, Lever- and React-style forms, ranges, EEO, resume upload, iframes, trap fields, learning answers |
+| `npm run test:auto` | **32** | Multi-step career page, multiple jobs, next page, new-site prompt, Stop, hostile page trying to press the buttons |
+| `npm run test:release` | **35** | Packaged zip, permissions, shortcuts, accessibility, light/dark contrast, backups, performance, worker restarts |
+
+```bash
+npm install          # installs Playwright
+npx playwright install chromium
+npm test             # fill + auto-apply suites
+npm run test:release # packages the zip and runs the release checklist
+```
+
+<br>
+
