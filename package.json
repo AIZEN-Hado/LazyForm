@@ -1,0 +1,21 @@
+{
+  "name": "lazyform",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Chrome extension that fills job application forms from a profile you save once. Runs fully on-device.",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/e2e.mjs && node tests/e2e-auto.mjs",
+    "test:fill": "node tests/e2e.mjs",
+    "test:auto": "node tests/e2e-auto.mjs",
+    "test:release": "npm run package && node tests/checklist.mjs",
+    "package": "cd extension && rm -f ../dist/lazyform-extension.zip && mkdir -p ../dist && zip -qr -X ../dist/lazyform-extension.zip . -x 'README.md' -x '.*'",
+    "diagrams": "node docs/diagrams/render.mjs",
+    "screenshots": "node tests/screenshots.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  },
+  "author": "Yashsingh Chauhan",
+  "license": "MIT"
+}
