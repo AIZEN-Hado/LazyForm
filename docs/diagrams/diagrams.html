@@ -243,3 +243,31 @@ function autoflow(t, name) {
   text(g, 'Never submits. Never touches other tabs.', 360, 562, { size: 13, weight: 600, color: t.text3 });
 }
 
+/* ---------------- 5. privacy ---------------- */
+function privacy(t, name) {
+  const W = 1600, H = 420, g = make(name, W, H, t);
+  text(g, 'Where your data lives', 64, 76, { size: 30, weight: 700, color: t.text, track: -1 });
+  rr(g, 64, 120, 900, 250, 26); g.fillStyle = t.panel; g.fill();
+  text(g, 'Your browser', 96, 162, { size: 17, weight: 650, color: t.text });
+  [['Profile', sym.form(t)], ['Resume', sym.window(t)], ['Saved answers', sym.db(t)]].forEach(([l, ic], i) => {
+    const x = 96 + i * 284;
+    rr(g, x, 190, 260, 140, 18); g.fillStyle = t.bg; g.fill(); g.strokeStyle = t.line; g.stroke();
+    ic(g, x + 34, 232, false);
+    text(g, l, x + 24, 290, { size: 18, weight: 600, color: t.text });
+    text(g, 'chrome.storage.local', x + 24, 314, { size: 12.5, color: t.text3 });
+  });
+  // wall + crossed cloud
+  g.fillStyle = t.line; g.fillRect(1020, 120, 6, 250);
+  const cx = 1290, cy = 245;
+  g.save(); g.strokeStyle = t.text3; g.lineWidth = 2.5;
+  g.beginPath(); g.arc(cx - 60, cy + 10, 38, Math.PI * .5, Math.PI * 1.5); g.arc(cx - 10, cy - 30, 52, Math.PI, Math.PI * 1.9); g.arc(cx + 58, cy + 5, 44, Math.PI * 1.4, Math.PI * .5); g.closePath(); g.stroke();
+  g.strokeStyle = t.bad; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.moveTo(cx - 120, cy + 80); g.lineTo(cx + 120, cy - 90); g.stroke(); g.restore();
+  text(g, 'No server · no analytics · no network calls', 1290, 370, { size: 15, weight: 600, color: t.text2, align: 'center' });
+}
+
+const all = { hero, architecture, pipeline, autoflow, privacy };
+for (const [name, fn] of Object.entries(all)) for (const th of ['light', 'dark']) fn(THEMES[th], `${name}-${th}`);
+window.__ready = true;
+</script>
+</body>
+</html>
