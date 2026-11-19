@@ -130,3 +130,11 @@
     skills: 'skills', languages: 'languages', howHeard: '“how did you hear about us” answer', portfolio: 'portfolio / website',
   };
 
+  // Keys whose answer is a yes / no
+  const YES_NO_KEYS = new Set(['authorizedToWork', 'requireSponsorship', 'willingToRelocate', 'over18']);
+  // Long-form answers only belong in multi-line boxes
+  const LONG_KEYS = new Set(['summary', 'coverLetter']);
+  // Checkboxes that represent legal consent are never ticked for the user
+  const CONSENT_RE = /\bagree|consent|terms|privacy|acknowledge|certify|attest|confirm that|i understand|accurate|true and complete|signature|subscribe|newsletter|marketing|text messages|sms/;
+
+  // ---------------------------------------------------------------------------
