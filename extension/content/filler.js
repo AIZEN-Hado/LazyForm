@@ -105,3 +105,13 @@
     { key: 'portfolio', re: /portfolio|personal (web ?)?site|^website$|website|\bblog\b|\burl\b|other (link|profile)|\blinks?\b/, not: /company|linked ?in|git ?hub|twitter/ },
   ];
 
+  const AUTOCOMPLETE = {
+    'given-name': 'firstName', 'additional-name': 'middleName', 'family-name': 'lastName',
+    name: 'fullName', nickname: 'preferredName', email: 'email', tel: 'phone', 'tel-national': 'phone',
+    'tel-country-code': 'phoneCountryCode', 'street-address': 'street', 'address-line1': 'street',
+    'address-line2': 'street2', 'address-level2': 'city', 'address-level1': 'state',
+    'postal-code': 'postalCode', country: 'country', 'country-name': 'country',
+    organization: 'currentCompany', 'organization-title': 'currentTitle', url: 'portfolio',
+    bday: 'dateOfBirth', sex: 'gender',
+  };
+
