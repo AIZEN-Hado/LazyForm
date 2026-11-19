@@ -95,3 +95,41 @@ Answer a new question yourself, click **Save my new answers**, and it fills that
 
 <br>
 
+## ⚙ Install
+
+LazyForm isn't on the Chrome Web Store yet, so you load it yourself. It takes about two minutes.
+
+| Step | What to do |
+| :---: | --- |
+| **①** | Download **[`lazyform-extension.zip`](dist/lazyform-extension.zip)** and unzip it into a folder you'll keep. |
+| **②** | Open `chrome://extensions` and switch on **Developer mode** (top right). |
+| **③** | Click **Load unpacked** and pick the unzipped folder (the one with `manifest.json`). |
+| **④** | The setup page opens. Fill in your details and drop in your resume. |
+| **⑤** | Pin the LazyForm icon from the puzzle-piece menu. |
+
+> **Updating:** replace the folder with the new version and press **↻ Reload** on the LazyForm card in `chrome://extensions`. Your profile is kept.
+
+<br>
+
+## ▶ Use
+
+```text
+Open a job application
+        │
+        ├──▶  Click the LazyForm icon ─▶ Start auto-apply     (fills every step & page until Stop)
+        │
+        └──▶  …or press Alt+Shift+F                            (fills just this page, once)
+```
+
+| You'll see | Meaning |
+| --- | --- |
+| 🟩 **Green outline** | Filled by LazyForm |
+| 🟧 **Dashed amber outline** | Needs you: consent boxes, unknown required questions, dropdowns it couldn't match |
+| ⬤ **Bar in the corner** | Auto-apply is on, with a live count and a **Stop** button |
+
+**What it fills:** name, email, phone, address, LinkedIn / GitHub / portfolio, current role, years of experience, notice period, start date, salary, work authorization, sponsorship, relocation, education, skills, summary, cover letter, diversity questions (only if you set them), your resume file, multiple jobs and degrees, and any answers you've saved.
+
+**What it never does:** submit forms · tick consent or "I certify" boxes · fill hidden trap fields · fill or remember ID, bank or card numbers · reuse an answer that names one company on another company's form.
+
+<br>
+
