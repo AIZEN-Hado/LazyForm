@@ -508,3 +508,19 @@
     return best ? best.o : null;
   }
 
+  // ---------------------------------------------------------------------------
+  // Setting values so React / Vue / Angular notice
+  // ---------------------------------------------------------------------------
+  function setNativeValue(el, value) {
+    const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+    setter.call(el, value);
+  }
+
+  function fire(el, ...types) {
+    for (const t of types) {
+      const ev = t === 'input' ? new InputEvent('input', { bubbles: true, composed: true }) : new Event(t, { bubbles: true, composed: true });
+      el.dispatchEvent(ev);
+    }
+  }
+
