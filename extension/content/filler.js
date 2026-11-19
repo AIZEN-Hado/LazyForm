@@ -457,3 +457,54 @@
   }
 
   // options: [{text, value, ref}] → best option or null
+  function pickOption(options, desired, key) {
+    const real = options.filter((o) => !PLACEHOLDER.test(norm(o.text)) || (o.value && !PLACEHOLDER.test(norm(o.value)) && norm(o.text)));
+    if (!real.length || desired == null || desired === '') return null;
+    const want = norm(desired);
+
+    if (YES_NO_KEYS.has(key) || want === 'yes' || want === 'no') {
+      const isYes = /^(yes|y|true)$/.test(want);
+      const isNo = /^(no|n|false)$/.test(want);
+      if (isYes || isNo) {
+        const hit = real.find((o) => (isYes ? yesish(o.text) : noish(o.text)));
+        if (hit) return hit;
+      }
+    }
+    if (DECLINE.test(want)) {
+      const hit = real.find((o) => DECLINE.test(norm(o.text)));
+      if (hit) return hit;
+    }
+    const aliases = aliasSet(desired);
+    let hit = real.find((o) => aliases.includes(norm(o.text)) || aliases.includes(norm(o.value)));
+    if (hit) return hit;
+
+    if (key === 'yearsExperience' || /^\d+(\.\d+)?$/.test(want)) {
+      const n = parseFloat(want);
+      if (!isNaN(n)) {
+        hit = real.find((o) => {
+          const r = parseRange(o.text);
+          return r && n >= r[0] && n <= r[1];
+        });
+        if (hit) return hit;
+      }
+    }
+
+    // starts-with / contains (avoid "male" ↔ "female", "no" ↔ "not")
+    const wordRe = new RegExp(`(^|\\s)${want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`);
+    hit = real.find((o) => norm(o.text).startsWith(want + ' ') || wordRe.test(norm(o.text)));
+    if (hit && want.length >= 2) return hit;
+    hit = real.find((o) => {
+      const t = norm(o.text);
+      return t.length >= 3 && new RegExp(`(^|\\s)${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`).test(want);
+    });
+    if (hit) return hit;
+
+    // token similarity as a last resort
+    let best = null;
+    real.forEach((o) => {
+      const s = similarity(o.text, desired);
+      if (s >= 0.6 && (!best || s > best.s)) best = { o, s };
+    });
+    return best ? best.o : null;
+  }
+
