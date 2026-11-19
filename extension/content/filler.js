@@ -680,3 +680,69 @@
     return el;
   }
 
+  function showPanel(result) {
+    document.getElementById('lazyform-panel-host')?.remove();
+    if (window.top !== window && !result.filled.length) return;
+    const host = document.createElement('div');
+    host.id = 'lazyform-panel-host';
+    host.setAttribute(UI_ATTR, '');
+    host.style.cssText = 'position:fixed;z-index:2147483647;right:16px;bottom:16px;';
+    const root = host.attachShadow({ mode: 'closed' });
+    const review = result.skipped.filter((s) => s.attention);
+    root.innerHTML = `
+      <style>
+        :host{all:initial}
+        .card{font:13px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#0a0a0a;background:#fff;border:1px solid #ebebeb;border-radius:20px;
+          box-shadow:0 24px 48px -20px rgba(0,0,0,.28);width:310px;max-height:60vh;display:flex;flex-direction:column;overflow:hidden;letter-spacing:-.005em}
+        header{display:flex;align-items:center;gap:10px;padding:14px 16px 10px}
+        .dot{width:20px;height:20px;border-radius:50%;flex:none;background:radial-gradient(circle at 30% 28%,#ffd3a8 0 18%,transparent 46%),radial-gradient(circle at 72% 30%,#b9c6ff 0 20%,transparent 52%),radial-gradient(circle at 46% 78%,#ffb4d6 0 22%,transparent 56%),radial-gradient(circle,#9fe3ff,#c7b8ff 70%)}
+        h2{font-size:14.5px;font-weight:600;letter-spacing:-.02em;margin:0;flex:1}
+        button{font:inherit;cursor:pointer}
+        .x{border:0;background:#f5f5f5;font-size:15px;line-height:1;color:#555;width:28px;height:28px;border-radius:50%}
+        .x:hover,.x:focus-visible{background:#ebebeb;outline:none}
+        .body{padding:4px 16px 14px;overflow:auto}
+        p{margin:0 0 8px;color:#555}
+        ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+        li button{width:100%;text-align:left;border:0;background:#f5f5f5;color:#0a0a0a;border-radius:12px;padding:8px 10px}
+        li button:hover,li button:focus-visible{background:#ebebeb;outline:none}
+        .req{color:#9a5b00;font-weight:600}
+        .foot{font-size:12px;color:#6e6e6e;margin-top:12px}
+        @media (prefers-color-scheme: dark){
+          .card{background:#121212;color:#f7f7f7;border-color:#262626}
+          p{color:#b5b5b5} .foot{color:#a0a0a0}
+          li button{background:#1a1a1a;color:#f7f7f7} li button:hover{background:#262626}
+          .x{background:#1a1a1a;color:#b5b5b5} .x:hover{background:#262626} .req{color:#f5b84a}
+        }
+      </style>
+      <div class="card" role="status" aria-live="polite">
+        <header><span class="dot" aria-hidden="true"></span>
+          <h2>Filled ${result.filled.length} field${result.filled.length === 1 ? '' : 's'}</h2>
+          <button class="x" aria-label="Close LazyForm summary">×</button></header>
+        <div class="body">
+          ${review.length ? `<p>${review.length} need${review.length === 1 ? 's' : ''} your attention:</p><ul></ul>` : '<p>Nothing obvious left — check the form before you submit.</p>'}
+          <div class="foot">Green = filled · dashed amber = check yourself. Nothing was submitted.</div>
+        </div>
+      </div>`;
+    const ul = root.querySelector('ul');
+    review.slice(0, 30).forEach((s) => {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.innerHTML = `${s.required ? '<span class="req">Required · </span>' : ''}`;
+      b.append(document.createTextNode(s.label));
+      b.addEventListener('click', () => {
+        const target = s.el;
+        if (target && target.isConnected) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => target.focus?.({ preventScroll: true }), 300);
+        }
+      });
+      li.append(b);
+      ul.append(li);
+    });
+    const close = () => host.remove();
+    root.querySelector('.x').addEventListener('click', close);
+    root.addEventListener('keydown', (e) => e.key === 'Escape' && close());
+    (document.body || document.documentElement).appendChild(host);
+  }
+
+  // ---------------------------------------------------------------------------
