@@ -418,3 +418,28 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Choosing among options (selects, radios, custom dropdowns)
+  // ---------------------------------------------------------------------------
+  const COUNTRY_ALIASES = [
+    ['united states', 'united states of america', 'usa', 'us', 'u s', 'u s a', 'america'],
+    ['united kingdom', 'uk', 'u k', 'great britain', 'britain', 'england', 'gb'],
+    ['india', 'in', 'ind', 'bharat'],
+    ['united arab emirates', 'uae', 'emirates'],
+    ['canada', 'ca', 'can'],
+    ['germany', 'de', 'deutschland'],
+    ['australia', 'au', 'aus'],
+    ['netherlands', 'nl', 'holland', 'the netherlands'],
+    ['south korea', 'korea', 'republic of korea', 'korea republic of'],
+  ];
+  const DECLINE = /decline|prefer not|do not wish|don t wish|dont wish|not wish|choose not|rather not|not to (say|answer|disclose|self identify)|not specified|i don t want/;
+  const PLACEHOLDER = /^(select|choose|please select|please choose|pick|none selected|\-+|—|select one|select an option|\s*)$/;
+
+  const yesish = (s) => !noish(s) && /^(yes|y|true|i am|i do|i will|i have|i can|i would)\b/.test(norm(s));
+  const noish = (s) => /^(no|n|false|i am not|i do not|i don t|i will not|i won t|i have not|i cannot|i can t)\b/.test(norm(s));
+
+  function aliasSet(v) {
+    const n = norm(v);
+    const group = COUNTRY_ALIASES.find((g) => g.includes(n));
+    return group || [n];
+  }
+
