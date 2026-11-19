@@ -384,3 +384,15 @@
     return best;
   }
 
+  // Never fill or remember these: government IDs, bank / card details, passwords
+  const SENSITIVE_RE = /social security|\bssn\b|aadh?aar|\bpan (card|number|no)\b|passport (no|number|#)|national (id|insurance)|\bnin\b|bank account|account (number|no)|routing|\bifsc\b|\biban\b|\bswift\b|sort code|credit card|debit card|card number|\bcvv\b|\bcvc\b|expir(y|ation) date|tax (id|file|identification)|\btin\b|\bitin\b|licen[cs]e number|password|passcode|\botp\b|security (code|answer|question)|mother s maiden|(atm|card|security) pin/;
+  const isSensitive = (text) => SENSITIVE_RE.test(norm(text));
+
+  // Capitalised names inside a question ("Acme" in "Why do you want to work at Acme?")
+  const properNouns = (q) =>
+    String(q || '')
+      .split(/[^A-Za-z0-9&'.-]+/)
+      .slice(1)
+      .filter((w) => /^[A-Z][a-zA-Z0-9&'.-]+$/.test(w) && !/^(I|I'm|LinkedIn|GitHub|US|USA|UK|EU|CV|GPA|CTC|Yes|No|Please|If|What|Why|How|When|Where|Which)$/.test(w))
+      .map((w) => w.toLowerCase().replace(/[.']+$/, ''));
+
