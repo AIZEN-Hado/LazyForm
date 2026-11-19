@@ -181,3 +181,46 @@ function renderQA() {
 
 function fmtSize(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
 
+function renderResume() {
+  const wrap = el('div');
+  const file = el('input', { type: 'file', accept: '.pdf,.doc,.docx,.rtf,.txt,.odt', hidden: true, id: 'resume-file' });
+  const draw = () => {
+    wrap.querySelector('.drop')?.remove();
+    const ext = resume ? (resume.name.split('.').pop() || '').toUpperCase().slice(0, 4) : '';
+    const drop = el('div', { class: 'drop' },
+      el('div', { class: 'file-ico', 'aria-hidden': 'true', text: resume ? ext : '+' }),
+      el('div', { class: 'meta' },
+        el('div', { class: 'name', text: resume ? resume.name : 'No resume yet' }),
+        el('div', { class: 'sub', text: resume ? `${fmtSize(resume.size)} · added ${new Date(resume.added).toLocaleDateString()}` : 'PDF or Word, up to 5 MB. Drop it here or choose a file.' })),
+      el('div', { class: 'acts' },
+        el('button', { type: 'button', class: 'btn', text: resume ? 'Replace' : 'Choose file', onclick: () => file.click() }),
+        resume ? el('button', { type: 'button', class: 'btn ghost danger', text: 'Remove', onclick: async () => {
+          resume = null; await chrome.storage.local.remove('resume'); draw(); updateMeter(); toast('Resume removed');
+        } }) : null));
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) take(e.dataTransfer.files[0]); });
+    wrap.prepend(drop);
+  };
+  const take = (f) => {
+    if (f.size > MAX_RESUME) return toast('That file is over 5 MB — please use a smaller PDF.');
+    const reader = new FileReader();
+    reader.onload = async () => {
+      resume = { name: f.name, type: f.type || 'application/octet-stream', size: f.size, dataUrl: reader.result, added: Date.now() };
+      try { await chrome.storage.local.set({ resume }); draw(); updateMeter(); toast('Resume saved'); }
+      catch (e) { toast('Couldn’t store that file: ' + e.message); }
+    };
+    reader.readAsDataURL(f);
+  };
+  file.addEventListener('change', () => file.files[0] && take(file.files[0]));
+  wrap.append(file);
+  draw();
+  return wrap;
+}
+
+function toggle(id, label, desc, checked, onChange) {
+  const input = el('input', { type: 'checkbox', id, checked, 'aria-describedby': id + '-d' });
+  input.addEventListener('change', () => onChange(input.checked, input));
+  return el('div', { class: 'toggle' }, input, el('div', {}, el('label', { htmlFor: id, text: label }), el('p', { id: id + '-d', text: desc })));
+}
+
