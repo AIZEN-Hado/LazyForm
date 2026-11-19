@@ -443,3 +443,17 @@
     return group || [n];
   }
 
+  function parseRange(text) {
+    const t = String(text || '').toLowerCase().replace(/,/g, '');
+    let m = t.match(/(\d+(?:\.\d+)?)\s*(?:to|-|–|and)\s*(\d+(?:\.\d+)?)/);
+    if (m) return [parseFloat(m[1]), parseFloat(m[2])];
+    m = t.match(/(\d+(?:\.\d+)?)\s*(?:\+|or more|or above|and above|and over|plus)|(?:more than|over|above|at least|greater than)\s*(\d+(?:\.\d+)?)/);
+    if (m) return [parseFloat(m[1] || m[2]), Infinity];
+    m = t.match(/(?:less than|under|below|up to|fewer than)\s*(\d+(?:\.\d+)?)/);
+    if (m) return [0, parseFloat(m[1])];
+    m = t.match(/^(\d+(?:\.\d+)?)\b/);
+    if (m) return [parseFloat(m[1]), parseFloat(m[1])];
+    return null;
+  }
+
+  // options: [{text, value, ref}] → best option or null
