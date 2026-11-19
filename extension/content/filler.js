@@ -877,3 +877,126 @@
   let lastResult = null;
   let running = false;
 
+  async function fill(opts = {}) {
+    if (running) return { busy: true, fieldCount: 0, filled: [], skipped: [] };
+    running = true;
+    try {
+      const { profile, settings, resume } = await loadData();
+      DATE_PREF = settings.dateFormat || 'auto';
+      const values = flatten(profile);
+      const qa = profile.customQA || [];
+      const fields = plan(buildFields(), profile);
+      const filled = [];
+      const skipped = [];
+      if (settings.highlight) { ensureStyle(); if (!opts.onlyNew) clearMarks(); }
+
+      const mark = (f, state) => settings.highlight && markTarget(f.el).setAttribute(MARK_ATTR, state);
+      const done = (f, key, value) => { filled.push({ label: f.d.display, key, value: clip(value, 60) }); mark(f, 'filled'); };
+      const skip = (f, reason, attention = false) => {
+        skipped.push({ label: f.d.display, reason, required: !!f.d.required, attention: attention || !!f.d.required, el: f.el });
+        if (attention || f.d.required) mark(f, 'review');
+      };
+      const focused = document.activeElement;
+
+      for (const f of fields) {
+        if (opts.onlyNew && (touched.has(f.el) || f.el === focused)) continue;
+        touched.add(f.el);
+        if (f.members) f.members.forEach((m) => touched.add(m));
+        if (!settings.overwrite && isFilled(f)) { continue; }
+
+        if (f.kind === 'file') {
+          const what = norm(f.d.label + ' ' + f.d.attrs + ' ' + f.d.context);
+          const isResume = /resume|\bcv\b|curriculum|r sum/.test(what) || (!/cover|photo|image|avatar|transcript|portfolio|certificate|id proof|passport|document/.test(what) && fields.filter((x) => x.kind === 'file').length === 1);
+          if (isResume && resume?.dataUrl) {
+            try { done(f, 'resume', await attachResume(f.el, resume)); }
+            catch { skip(f, 'Could not attach your resume here — upload it manually', true); }
+          } else if (isResume) skip(f, 'Add your resume in LazyForm settings', true);
+          else skip(f, 'File upload — attach manually', f.d.required);
+          continue;
+        }
+
+        const r = resolve(f, values, qa, profile);
+        if (r && r.sensitive) { skip(f, 'Sensitive (ID, bank or card details) — LazyForm never fills these', true); continue; }
+
+        if (f.kind === 'checkbox') {
+          const q = f.d.label || f.d.context;
+          if (CONSENT_RE.test(q)) { skip(f, 'Consent / declaration — tick it yourself after reading', true); continue; }
+          if (r && !r.missing && !r.quiet && (YES_NO_KEYS.has(r.key) || r.key === 'custom' || r.key === 'currentlyHere')) {
+            const want = yesish(r.value) || /^(true|y)$/i.test(r.value);
+            if (want !== f.el.checked) f.el.click();
+            done(f, r.key, want ? 'Checked' : 'Unchecked');
+          } else if (f.d.required) skip(f, 'Unrecognised checkbox', true);
+          continue;
+        }
+
+        if (!r) { skip(f, 'No matching info in your profile', f.d.required); continue; }
+        if (r.quiet) continue;
+        if (r.missing) { skip(f, r.reason || `Add your ${KEY_LABELS[r.key] || r.key} in LazyForm to fill this`, f.d.required); continue; }
+        const value = adaptValue(f.el, r.key, r.value);
+
+        if (f.kind === 'select') {
+          const options = [...f.el.options].map((o) => ({ text: o.text, value: o.value, ref: o }));
+          const choice = pickOption(options, value, r.key);
+          if (!choice) { skip(f, `No option matches “${clip(value, 30)}”`, true); continue; }
+          f.el.focus();
+          setNativeValue(f.el, choice.value);
+          choice.ref.selected = true;
+          fire(f.el, 'input', 'change');
+          f.el.blur();
+          done(f, r.key, choice.text);
+          continue;
+        }
+
+        if (f.kind === 'radio' || f.kind === 'checkgroup') {
+          const options = f.members.map((m) => ({ text: optionLabel(m), value: m.value, ref: m }));
+          const want = f.kind === 'checkgroup' ? String(value).split(/\s*[,;]\s*/) : [value];
+          const picks = want.map((w) => pickOption(options, w, r.key)).filter(Boolean);
+          if (!picks.length) { skip(f, `No option matches “${clip(value, 30)}”`, true); continue; }
+          picks.forEach((p) => { if (!p.ref.checked) p.ref.click(); });
+          done(f, r.key, picks.map((p) => p.text).join(', '));
+          continue;
+        }
+
+        if (f.kind === 'combo') {
+          try {
+            const got = await fillCombobox(f.el, value, r.key);
+            if (got === 'typed') {
+              done(f, r.key, value);
+              skipped.push({ label: f.d.display, reason: 'Typed — if the site shows suggestions, pick one', required: !!f.d.required, attention: true, el: f.el });
+              mark(f, 'review');
+            } else if (got) done(f, r.key, got);
+            else skip(f, `Couldn't pick “${clip(value, 30)}” in this dropdown — choose it yourself`, true);
+          } catch { skip(f, 'Dropdown needs manual selection', true); }
+          continue;
+        }
+
+        if (f.kind === 'text') {
+          if (r.key === 'email' && f.el.type && !/email|text/.test(f.el.type)) { skip(f, 'Unexpected field type'); continue; }
+          typeText(f.el, value);
+          done(f, r.key, value);
+        }
+      }
+
+      // Keep a running list for the page so auto-apply mode can show everything left to do
+      if (opts.onlyNew && lastResult) {
+        const stillOpen = lastResult.skipped.filter((s) => s.el && s.el.isConnected && !isFilledEl(s.el));
+        lastResult = { filled: lastResult.filled.concat(filled), skipped: stillOpen.concat(skipped) };
+      } else {
+        lastResult = { filled, skipped };
+      }
+
+      const result = {
+        url: location.href,
+        frame: window.top === window ? 'top' : 'frame',
+        fieldCount: fields.length,
+        filled,
+        skipped: skipped.map(({ el, ...rest }) => rest),
+        pageNeeds: lastResult.skipped.filter((s) => s.attention).length,
+      };
+      if (settings.showPanel && !opts.silent && fields.length) showPanel(lastResult);
+      return result;
+    } finally {
+      running = false;
+    }
+  }
+
