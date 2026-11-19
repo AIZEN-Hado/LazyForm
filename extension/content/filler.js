@@ -158,3 +158,16 @@
   }
 
   // ---------------------------------------------------------------------------
+  // DOM collection
+  // ---------------------------------------------------------------------------
+  function collectControls(root = document, out = []) {
+    const sel = 'input, select, textarea, [role="combobox"]:not(input), [aria-haspopup="listbox"]:not(input)';
+    root.querySelectorAll(sel).forEach((el) => out.push(el));
+    root.querySelectorAll('*').forEach((el) => {
+      if (el.shadowRoot && !el.hasAttribute(UI_ATTR)) collectControls(el.shadowRoot, out);
+    });
+    return out;
+  }
+
+  const SKIP_TYPES = new Set(['hidden', 'password', 'submit', 'button', 'reset', 'image', 'search', 'range', 'color']);
+
