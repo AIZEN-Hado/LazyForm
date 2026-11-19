@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LazyForm – Your profile</title>
+  <link rel="stylesheet" href="shared/tokens.css">
+  <link rel="stylesheet" href="options/options.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to form</a>
+  <div class="layout">
+    <aside class="side" aria-label="Sections">
+      <div class="brand"><img src="icons/icon48.png" alt="" width="28" height="28"><span>LazyForm</span></div>
+      <div class="meter" aria-live="polite">
+        <div class="meter-row"><span>Profile</span><strong id="meter-pct">0%</strong></div>
+        <div class="bar" role="progressbar" aria-label="Profile completeness" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="meter-bar"></i></div>
+      </div>
+      <nav id="nav"></nav>
+      <p class="side-note">Stored only in this browser. Nothing is uploaded anywhere.</p>
+    </aside>
+
+    <main id="main">
+      <header class="top">
+        <div>
+          <h1>Your application profile</h1>
+          <p class="lede">Fill this in once. On any application form, click the LazyForm icon or press <kbd id="kbd">Alt+Shift+F</kbd> and it fills in what the form asks for.</p>
+        </div>
+        <span id="save-state" class="save" role="status" aria-live="polite">All changes saved</span>
+      </header>
+      <form id="profile" novalidate autocomplete="on"></form>
+    </main>
+  </div>
+
+  <template id="tpl-repeat-item">
+    <fieldset class="item">
+      <legend class="item-title"></legend>
+      <div class="grid"></div>
+      <div class="item-actions">
+        <button type="button" class="btn ghost small" data-act="up">Move up</button>
+        <button type="button" class="btn ghost small danger" data-act="remove">Remove</button>
+      </div>
+    </fieldset>
+  </template>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="options/options.js"></script>
+</body>
+</html>
