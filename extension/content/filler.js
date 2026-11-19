@@ -656,3 +656,27 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Highlighting + on-page summary
+  // ---------------------------------------------------------------------------
+  function ensureStyle() {
+    if (document.getElementById('lazyform-style')) return;
+    const st = document.createElement('style');
+    st.id = 'lazyform-style';
+    st.textContent = `
+      [${MARK_ATTR}="filled"]{outline:2px solid #22a35a !important;outline-offset:2px !important;border-radius:6px;transition:outline-color .3s}
+      [${MARK_ATTR}="review"]{outline:2px dashed #e0a030 !important;outline-offset:2px !important;border-radius:6px}`;
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  function clearMarks() {
+    document.querySelectorAll(`[${MARK_ATTR}]`).forEach((n) => n.removeAttribute(MARK_ATTR));
+  }
+
+  function markTarget(el) {
+    if (el.type === 'radio' || el.type === 'checkbox') {
+      return el.closest('fieldset, [role="radiogroup"], [role="group"]') || el.parentElement || el;
+    }
+    if (el.type === 'file') return el.closest('label, div') || el;
+    return el;
+  }
+
