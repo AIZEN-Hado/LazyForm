@@ -244,3 +244,25 @@
     return parts.join(' ').trim();
   }
 
+  // Nearby text for frameworks that don't link labels (Lever, Ashby, Workday, …)
+  function contextText(el) {
+    let node = el.parentElement;
+    for (let depth = 0; node && depth < 5; depth++, node = node.parentElement) {
+      const controls = node.querySelectorAll('input:not([type=hidden]), select, textarea');
+      const radiosOnly = [...controls].every((c) => c.type === 'radio' || c.type === 'checkbox');
+      if (controls.length > 1 && !(radiosOnly && el.type !== 'text')) {
+        // too broad – fall back to the closest preceding sibling text
+        break;
+      }
+      const t = textOf(node, el);
+      if (t && t.length > 1) return clip(t, 220);
+    }
+    // preceding sibling heading/label
+    let prev = el.previousElementSibling || el.parentElement?.previousElementSibling;
+    for (let i = 0; prev && i < 3; i++, prev = prev.previousElementSibling) {
+      const t = textOf(prev);
+      if (t) return clip(t, 220);
+    }
+    return '';
+  }
+
