@@ -644,3 +644,15 @@
     return choice.text;
   }
 
+  async function attachResume(el, resume) {
+    const res = await fetch(resume.dataUrl);
+    const blob = await res.blob();
+    const file = new File([blob], resume.name, { type: resume.type || blob.type, lastModified: Date.now() });
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    el.files = dt.files;
+    fire(el, 'input', 'change');
+    return resume.name;
+  }
+
+  // ---------------------------------------------------------------------------
