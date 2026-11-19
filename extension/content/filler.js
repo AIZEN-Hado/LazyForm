@@ -266,3 +266,44 @@
     return '';
   }
 
+  function groupQuestion(el) {
+    const fs = el.closest('fieldset');
+    if (fs) {
+      const legend = fs.querySelector('legend');
+      if (legend) return textOf(legend);
+    }
+    const group = el.closest('[role="radiogroup"], [role="group"]');
+    if (group) {
+      const t = byIds(group.getAttribute('aria-labelledby'), el.getRootNode()) || group.getAttribute('aria-label');
+      if (t) return t;
+    }
+    // walk up to a container holding the whole group, take its text minus option labels
+    const name = el.name;
+    let node = el.parentElement;
+    for (let depth = 0; node && depth < 6; depth++, node = node.parentElement) {
+      const same = name ? node.querySelectorAll(`input[name="${CSS.escape(name)}"]`) : [el];
+      const all = node.querySelectorAll('input:not([type=hidden]), select, textarea');
+      if (same.length === all.length && all.length >= 1) {
+        const optionText = new Set([...same].map((r) => norm(optionLabel(r))));
+        const sib = node.previousElementSibling;
+        const own = textOf(node)
+          .split(/\s{2,}|\n/)
+          .join(' ');
+        let q = own;
+        optionText.forEach((o) => { if (o) q = norm(q).replace(o, ' '); });
+        q = q.trim();
+        if (q.length > 2) return q;
+        if (sib) return textOf(sib);
+      } else break;
+    }
+    return contextText(el);
+  }
+
+  function optionLabel(input) {
+    if (input.labels && input.labels.length) return textOf(input.labels[0], input) || input.value;
+    const al = input.getAttribute('aria-label');
+    if (al) return al;
+    const next = input.nextElementSibling || input.parentElement;
+    return (next && textOf(next, input)) || input.value || '';
+  }
+
