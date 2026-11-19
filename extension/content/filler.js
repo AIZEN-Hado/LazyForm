@@ -350,3 +350,37 @@
     return null;
   }
 
+  function classify(el, d, section = null) {
+    const type = (el.type || '').toLowerCase();
+    if (d.autocomplete && AUTOCOMPLETE[d.autocomplete] && d.autocomplete !== 'off' && d.autocomplete !== 'on') {
+      return { key: AUTOCOMPLETE[d.autocomplete], score: 10 };
+    }
+    if (type === 'email') return { key: 'email', score: 9 };
+    if (type === 'tel' && !/code|extension/.test(d.label + d.attrs)) return { key: 'phone', score: 8 };
+
+    let best = null;
+    const sources = [
+      [d.label, 3],
+      [d.attrs, 2],
+      [d.context, 1.5],
+    ];
+    RULES.forEach((rule, idx) => {
+      if (rule.section && !(section && (rule.section === true || rule.section === section))) return;
+      let score = 0;
+      for (const [text, w] of sources) {
+        if (!text) continue;
+        if (rule.re.test(text) && !(rule.not && rule.not.test(text))) score = Math.max(score, w);
+      }
+      // a label that says something different outranks a hint in the name attribute
+      if (score && score < 3 && d.label && !rule.re.test(d.label) && RULES.some((r) => r !== rule && r.re.test(d.label) && !(r.not && r.not.test(d.label)))) {
+        score -= 1.2;
+      }
+      if (score > 0) {
+        const s = score - idx * 0.001;
+        if (!best || s > best.score) best = { key: rule.key, score: s };
+      }
+    });
+    if (best && LONG_KEYS.has(best.key) && el.tagName !== 'TEXTAREA' && !el.isContentEditable) return null;
+    return best;
+  }
+
