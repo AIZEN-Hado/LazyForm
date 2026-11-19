@@ -98,3 +98,49 @@ function renderSimple(sec) {
   return grid;
 }
 
+function renderRepeat(sec) {
+  const kind = sec.repeat;
+  const cfg = REPEATS[kind];
+  const wrap = el('div');
+  const list = el('div');
+  const draw = () => {
+    list.replaceChildren();
+    const items = profile[kind] || [];
+    if (!items.length) list.append(el('div', { class: 'empty', text: `No ${cfg.noun}s added yet.` }));
+    items.forEach((item, i) => {
+      const node = $('#tpl-repeat-item').content.firstElementChild.cloneNode(true);
+      node.querySelector('legend').textContent = (item.title || item.school || `${cfg.noun[0].toUpperCase() + cfg.noun.slice(1)} ${i + 1}`) + (item.company ? ` · ${item.company}` : '') + (item.degree ? ` · ${item.degree}` : '');
+      const grid = node.querySelector('.grid');
+      cfg.fields.forEach((def) =>
+        grid.append(control(def, item[def.key], (v) => {
+          item[def.key] = v;
+          scheduleSave();
+          if (/title|company|school|degree/.test(def.key)) node.querySelector('legend').textContent =
+            (item.title || item.school || `${cfg.noun} ${i + 1}`) + (item.company ? ` · ${item.company}` : '') + (item.degree ? ` · ${item.degree}` : '');
+        }, `${kind}${i}-`)),
+      );
+      const up = node.querySelector('[data-act="up"]');
+      up.disabled = i === 0;
+      up.setAttribute('aria-label', `Move ${cfg.noun} ${i + 1} up`);
+      up.addEventListener('click', () => { items.splice(i - 1, 0, items.splice(i, 1)[0]); scheduleSave(); draw(); });
+      const rm = node.querySelector('[data-act="remove"]');
+      rm.setAttribute('aria-label', `Remove ${cfg.noun} ${i + 1}`);
+      rm.addEventListener('click', () => { items.splice(i, 1); scheduleSave(); draw(); toast(`Removed ${cfg.noun}`); });
+      list.append(node);
+    });
+    updateNavCounts();
+  };
+  draw();
+  wrap.append(list, el('button', {
+    type: 'button', class: 'btn', text: `+ Add ${cfg.noun}`,
+    onclick: () => {
+      profile[kind] = profile[kind] || [];
+      profile[kind].push({});
+      scheduleSave();
+      draw();
+      list.lastElementChild?.querySelector('input')?.focus();
+    },
+  }));
+  return wrap;
+}
+
