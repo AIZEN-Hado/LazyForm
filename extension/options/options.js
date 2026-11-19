@@ -59,3 +59,42 @@ function toast(msg) {
   toast._t = setTimeout(() => (t.hidden = true), 2600);
 }
 
+// ---------------------------------------------------------------- fields
+function control(def, value, onChange, idPrefix = '') {
+  const id = 'f-' + idPrefix + def.key;
+  let input;
+  if (def.type === 'select') {
+    input = el('select', { id, name: def.key });
+    def.options.forEach((o) => input.append(el('option', { value: o, text: o || '—' })));
+    input.value = value || '';
+  } else if (def.type === 'textarea') {
+    input = el('textarea', { id, name: def.key, rows: def.rows || 3, placeholder: def.placeholder || '' });
+    input.value = value || '';
+  } else {
+    input = el('input', {
+      id, name: def.key, type: def.type || 'text', placeholder: def.placeholder || '',
+      autocomplete: def.autocomplete || 'off', inputMode: def.type === 'number' ? 'numeric' : null,
+    });
+    if (def.type === 'number') input.min = '0';
+    input.value = value || '';
+  }
+  input.addEventListener(def.type === 'select' ? 'change' : 'input', () => onChange(input.value));
+  if (def.type === 'email' || def.type === 'url') {
+    input.addEventListener('blur', () => input.setAttribute('aria-invalid', String(!!input.value && !input.checkValidity())));
+  }
+  const hintId = def.hint ? id + '-hint' : null;
+  if (hintId) input.setAttribute('aria-describedby', hintId);
+  if (def.required) input.setAttribute('aria-required', 'true');
+  return el('div', { class: 'field' + (def.wide || def.type === 'textarea' ? ' wide' : '') },
+    el('label', { htmlFor: id }, def.label, def.required ? el('span', { class: 'req', 'aria-hidden': 'true', text: '*' }) : null),
+    input,
+    def.hint ? el('span', { class: 'hint', id: hintId, text: def.hint }) : null,
+  );
+}
+
+function renderSimple(sec) {
+  const grid = el('div', { class: 'grid' });
+  sec.fields.forEach((def) => grid.append(control(def, profile[def.key], (v) => { profile[def.key] = v; scheduleSave(); })));
+  return grid;
+}
+
