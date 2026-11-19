@@ -307,3 +307,24 @@
     return (next && textOf(next, input)) || input.value || '';
   }
 
+  function describe(el) {
+    const label = labelText(el);
+    const attrs = [el.name, el.id, el.getAttribute('placeholder'), el.getAttribute('data-automation-id'), el.getAttribute('title'), el.getAttribute('data-qa')]
+      .filter(Boolean)
+      .join(' ');
+    const isGroup = el.type === 'radio' || (el.type === 'checkbox' && el.name && document.querySelectorAll(`input[name="${CSS.escape(el.name)}"]`).length > 1);
+    const question = isGroup ? groupQuestion(el) : '';
+    const context = label ? '' : contextText(el);
+    return {
+      label: norm(question || label),
+      attrs: norm(attrs),
+      context: norm(context),
+      display: clip(question || label || context || el.getAttribute('placeholder') || el.name || el.id || 'Unlabelled field', 90),
+      autocomplete: (el.getAttribute('autocomplete') || '').toLowerCase().split(/\s+/).pop(),
+      required:
+        el.required ||
+        el.getAttribute('aria-required') === 'true' ||
+        /\*\s*$|\*/.test(question || label || context),
+    };
+  }
+
