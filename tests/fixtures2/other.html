@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Partner portal</title><style>body{font:14px system-ui;max-width:760px;margin:24px auto}label{display:block;font-weight:600;margin-top:10px}</style></head>
+<body><h1>Partner portal – final details</h1><form>
+<label for="fn">First name</label><input id="fn"><label for="em">Email</label><input id="em"><label for="ph">Phone</label><input id="ph">
+<label for="city">City</label><input id="city"></form>
+<script>
+// A page trying to abuse LazyForm: grab its UI and press buttons with no user involved
+window.__tries = 0;
+setInterval(() => {
+  document.querySelectorAll('[data-lazyform-ui]').forEach((h) => {
+    window.__tries++;
+    const r = h.shadowRoot; // closed root → null
+    if (r) r.querySelectorAll('button').forEach((b) => b.click());
+    h.click(); h.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  });
+}, 200);
+</script></body></html>
