@@ -817,3 +817,28 @@
     return { profile, settings: { overwrite: false, highlight: true, showPanel: true, ...settings }, resume };
   }
 
+  // Experience / education blocks: which entry field i belongs to
+  const SECTION_MAP = {
+    experience: { currentTitle: 'title', currentCompany: 'company', location: 'location', city: 'location', rangeStart: 'startDate', rangeEnd: 'endDate', availableStartDate: 'startDate', jobDescription: 'description', summary: 'description', currentlyHere: '__current' },
+    education: { school: 'school', degree: 'degree', fieldOfStudy: 'fieldOfStudy', gpa: 'gpa', rangeStart: 'startDate', rangeEnd: 'endDate', graduationDate: 'endDate', availableStartDate: 'startDate' },
+  };
+
+  // Work out key + section + entry index for every field, in page order
+  function plan(fields, profile) {
+    const counters = {};
+    for (const f of fields) {
+      if (f.kind === 'file') continue;
+      const section = sectionOf(f.el);
+      const cls = classify(f.el, f.d, section);
+      f.cls = cls;
+      f.section = null;
+      if (cls && section && SECTION_MAP[section][cls.key]) {
+        const ck = section + ':' + cls.key;
+        f.section = section;
+        f.entryIndex = counters[ck] = ck in counters ? counters[ck] + 1 : 0;
+        f.entryField = SECTION_MAP[section][cls.key];
+      }
+    }
+    return fields;
+  }
+
