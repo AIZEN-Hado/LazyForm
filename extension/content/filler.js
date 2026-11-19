@@ -171,3 +171,18 @@
 
   const SKIP_TYPES = new Set(['hidden', 'password', 'submit', 'button', 'reset', 'image', 'search', 'range', 'color']);
 
+  function isVisible(el) {
+    if (!el.isConnected) return false;
+    const style = getComputedStyle(el);
+    if (style.visibility === 'hidden' || style.display === 'none') return false;
+    if (!el.getClientRects().length) return false;
+    // Guard against hidden "trap" fields that try to harvest autofill data
+    const r = el.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4) return false;
+    if (r.right + window.scrollX < 0 || r.bottom + window.scrollY < 0) return false;
+    for (let n = el, i = 0; n && n.nodeType === 1 && i < 6; n = n.parentElement, i++) {
+      if (parseFloat(getComputedStyle(n).opacity) < 0.05) return false;
+    }
+    return true;
+  }
+
