@@ -138,3 +138,23 @@
   const CONSENT_RE = /\bagree|consent|terms|privacy|acknowledge|certify|attest|confirm that|i understand|accurate|true and complete|signature|subscribe|newsletter|marketing|text messages|sms/;
 
   // ---------------------------------------------------------------------------
+  // Profile → flat value map
+  // ---------------------------------------------------------------------------
+  function flatten(p) {
+    const v = { ...p };
+    const exp = (p.experience || [])[0] || {};
+    const edu = (p.education || [])[0] || {};
+    v.currentTitle = p.currentTitle || exp.title || '';
+    v.currentCompany = p.currentCompany || exp.company || '';
+    v.school = edu.school || '';
+    v.degree = edu.degree || '';
+    v.fieldOfStudy = edu.fieldOfStudy || '';
+    v.gpa = edu.gpa || '';
+    v.graduationDate = edu.endDate || '';
+    v.fullName = [p.firstName, p.middleName, p.lastName].filter(Boolean).join(' ');
+    v.location = [p.city, p.state, p.country].filter(Boolean).join(', ');
+    if (!v.coverLetter && v.summary) v.coverLetter = '';
+    return v;
+  }
+
+  // ---------------------------------------------------------------------------
