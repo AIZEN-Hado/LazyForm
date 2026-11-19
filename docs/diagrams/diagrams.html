@@ -88,3 +88,33 @@ const sym = {
   eye: (t) => (g, x, y, dk) => { const c = dk ? t.inkText : t.text; g.save(); g.strokeStyle = c; g.lineWidth = 1.7; g.beginPath(); g.moveTo(x - 12, y); g.quadraticCurveTo(x, y - 12, x + 12, y); g.quadraticCurveTo(x, y + 12, x - 12, y); g.stroke(); g.beginPath(); g.arc(x, y, 3.5, 0, 7); g.fill(); g.restore(); },
 };
 
+/* ---------------- 1. hero ---------------- */
+function hero(t, name) {
+  const W = 1600, H = 600, g = make(name, W, H, t);
+  // soft orb glow
+  const glow = g.createRadialGradient(1170, 300, 0, 1170, 300, 420);
+  glow.addColorStop(0, 'rgba(196,182,255,.35)'); glow.addColorStop(.5, 'rgba(255,190,214,.15)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = glow; g.fillRect(0, 0, W, H);
+  // dotted grid
+  g.fillStyle = t.line;
+  for (let x = 40; x < W; x += 32) for (let y = 40; y < H; y += 32) { g.beginPath(); g.arc(x, y, 1.1, 0, 7); g.fill(); }
+  orb(g, 1170, 300, 150);
+  // floating field cards around the orb
+  const cards = [[880, 150, 'First name', 'Riya'], [1300, 110, 'Email', 'riya@…'], [1360, 440, 'Years of experience', '3–5 years'], [870, 430, 'Authorized to work?', 'Yes'], [1390, 275, 'Resume', 'Riya_CV.pdf']];
+  cards.forEach(([x, y, l, v]) => {
+    g.save(); g.shadowColor = 'rgba(0,0,0,.12)'; g.shadowBlur = 24; g.shadowOffsetY = 8;
+    rr(g, x - 95, y - 30, 190, 60, 16); g.fillStyle = t.bg; g.fill(); g.restore();
+    rr(g, x - 95, y - 30, 190, 60, 16); g.strokeStyle = t.line; g.stroke();
+    text(g, l, x - 78, y - 6, { size: 12, weight: 500, color: t.text3 });
+    text(g, v, x - 78, y + 15, { size: 15, weight: 600, color: t.text });
+    g.beginPath(); g.arc(x + 70, y, 11, 0, 7); g.fillStyle = t.ok; g.fill(); check(g, x + 70, y, 14, '#fff');
+  });
+  // headline
+  text(g, 'LazyForm', 96, 230, { size: 92, weight: 700, color: t.text, track: -4 });
+  text(g, 'Fill in your details once.', 100, 300, { size: 34, weight: 500, color: t.text, track: -1 });
+  text(g, 'Every job application fills itself.', 100, 344, { size: 34, weight: 500, color: t.text2, track: -1 });
+  pill(g, 160, 430, 'Chrome · Manifest V3', t, { dark: true, size: 14 });
+  pill(g, 347, 430, '100% on-device', t, { size: 14 });
+  pill(g, 508, 430, 'Never submits', t, { size: 14 });
+}
+
