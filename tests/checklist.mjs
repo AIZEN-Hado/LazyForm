@@ -29,3 +29,131 @@ check('S4', 'No inline scripts or remote assets in extension pages', !/<script(?
 check('S5', 'Every shadow root used for LazyForm UI is closed', !/attachShadow\(\{\s*mode:\s*'open'/.test(src));
 check('S6', 'Banner buttons only react to real (trusted) clicks', /e\.isTrusted/.test(src));
 
+// ---------------------------------------------------------------- browser checks on the release build
+const servers = [8901, 8902].map((p) => spawn('python3', ['-m', 'http.server', String(p), '--bind', '127.0.0.1', '-d', path.join(ROOT, 'tests', 'fixtures2')], { stdio: 'ignore' }));
+fs.writeFileSync(path.join(ROOT, 'tests', 'fixtures2', 'big.html'), `<!doctype html><title>Big form</title><form>${Array.from({ length: 150 }, (_, i) => {
+  const labels = ['First name', 'Last name', 'Email', 'Phone', 'City', 'Country', 'LinkedIn', 'Notice period', 'Expected salary', 'Why do you like puzzles?'];
+  return `<p><label for="b${i}">${labels[i % labels.length]} ${i}</label><input id="b${i}"></p>`;
+}).join('')}</form>`);
+fs.writeFileSync(path.join(ROOT, 'tests', 'fixtures2', 'busy.html'), `<!doctype html><title>Busy feed</title><form><label for="e">Email</label><input id="e"></form><div id="feed"></div>
+<script>setInterval(()=>{const d=document.createElement('p');d.textContent='post '+Date.now();feed.prepend(d);if(feed.children.length>50)feed.lastChild.remove();},100)</script>`);
+fs.writeFileSync(path.join(ROOT, 'tests', 'fixtures2', 'xss.html'), `<!doctype html><title>Labels with HTML</title><form>
+<label for="q">&lt;img src=x onerror="window.__pwned=1"&gt; Required question *</label><input id="q" required>
+<label for="e">Email</label><input id="e"></form>`);
+fs.writeFileSync(path.join(ROOT, 'tests', 'fixtures2', 'empty.html'), `<!doctype html><title>Blog</title><h1>Just an article</h1><p>No forms here.</p>`);
+await wait(800);
+
+// test copy = release + host access so headless can act without clicking the toolbar
+const T = path.join(OUT, 'test-build');
+fs.cpSync(REL, T, { recursive: true });
+const tmf = { ...mf, host_permissions: ['<all_urls>'], version_name: 'test' };
+fs.writeFileSync(path.join(T, 'manifest.json'), JSON.stringify(tmf));
+
+const PROFILE = {
+  firstName: '<img src=x onerror="window.__pwned=1">Priya', lastName: 'Sharma', email: 'priya@example.com', phone: '+91 98765 43210', city: 'Bengaluru', country: 'India',
+  linkedin: 'https://linkedin.com/in/x', noticePeriod: '30 days', expectedSalary: '35 LPA',
+  experience: [{ title: 'Engineer', company: 'Example' }], education: [{ school: 'EIT' }],
+};
+
+async function launch(ext, name) {
+  const ctx = await chromium.launchPersistentContext(path.join(OUT, name), {
+    channel: 'chromium', headless: true, viewport: { width: 1100, height: 850 },
+    args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`],
+  });
+  await wait(1500);
+  const sw = ctx.serviceWorkers().find((w) => w.url().startsWith('chrome-extension')) || (await ctx.waitForEvent('serviceworker'));
+  return { ctx, sw, id: new URL(sw.url()).host };
+}
+
+const errors = [];
+const watch = (page, label) => { page.on('pageerror', (e) => errors.push(`${label}: ${e.message}`)); page.on('console', (m) => m.type() === 'error' && !/favicon|ERR_|Failed to load resource/.test(m.text()) && errors.push(`${label}: ${m.text()}`)); };
+
+try {
+  // ---- release build exactly as a friend would load it
+  {
+    const { ctx, sw, id } = await launch(REL, 'rel');
+    check('I1', 'Release zip loads in Chrome, background worker starts', !!id);
+    const opts = ctx.pages().find((p) => p.url().includes('options.html'));
+    check('I2', 'Setup page opens on first install', !!opts);
+    const cmds = await sw.evaluate(() => chrome.commands.getAll());
+    const fill = cmds.find((c) => c.name === 'fill-form');
+    const auto = cmds.find((c) => c.name === 'toggle-auto');
+    check('I3', 'Fill shortcut assigned (Alt+Shift+F)', !!fill?.shortcut, fill?.shortcut || 'not assigned');
+    check('I4', 'Auto-apply shortcut assigned (Alt+Shift+Y)', !!auto?.shortcut, auto?.shortcut || 'not assigned by Chrome');
+    const perms = await sw.evaluate(() => chrome.permissions.getAll());
+    check('S7', 'Installs with no site access (only storage, activeTab, scripting)', perms.origins.length === 0 && perms.permissions.sort().join() === 'activeTab,scripting,storage', JSON.stringify(perms));
+    const popup = await ctx.newPage(); watch(popup, 'popup');
+    await popup.goto(`chrome-extension://${id}/popup.html`);
+    await popup.waitForSelector('#view .empty, #view .btn');
+    check('U1', 'Popup with empty profile points to setup', (await popup.textContent('#view')).includes('Set up your profile'));
+    await ctx.close();
+  }
+
+  const { ctx, sw, id } = await launch(T, 'test');
+  ctx.pages().forEach((p) => p.url().includes('options') && p.close());
+  await sw.evaluate((p) => chrome.storage.local.set({ profile: p }), PROFILE);
+
+  // ---- setup page: a11y, backup, limits, XSS
+  const opts = await ctx.newPage(); watch(opts, 'options');
+  await opts.goto(`chrome-extension://${id}/options.html`);
+  await opts.waitForSelector('#f-firstName');
+  const unlabeled = await opts.evaluate(() => [...document.querySelectorAll('input:not([type=hidden]):not([hidden]), select, textarea')]
+    .filter((e) => !(e.labels?.length || e.getAttribute('aria-label') || e.getAttribute('aria-labelledby'))).map((e) => e.id || e.name || e.type));
+  check('A1', 'Every setup-page field has a label (screen readers)', unlabeled.length === 0, unlabeled.join(', '));
+  const unnamedBtns = await opts.evaluate(() => [...document.querySelectorAll('button')].filter((b) => !(b.textContent.trim() || b.getAttribute('aria-label'))).length);
+  check('A2', 'Every button has a name', unnamedBtns === 0);
+  await opts.keyboard.press('Tab');
+  const firstFocus = await opts.evaluate(() => document.activeElement.textContent.trim());
+  check('A3', 'Keyboard: first Tab reaches “Skip to form” link', firstFocus === 'Skip to form', firstFocus);
+  const outline = await opts.evaluate(() => { const i = document.getElementById('f-email'); i.focus(); const s = getComputedStyle(i); return s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 2; });
+  check('A4', 'Visible focus outline on fields', outline);
+
+  // contrast of main text colours, light + dark
+  async function contrastSet(page) {
+    return page.evaluate(() => {
+      const lum = (c) => { const [r, g, b] = c.match(/\d+/g).slice(0, 3).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+      const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+      const bgOf = (el) => { for (let n = el; n; n = n.parentElement) { const c = getComputedStyle(n).backgroundColor; if (!/rgba\(0, 0, 0, 0\)|transparent/.test(c)) return c; } return 'rgb(255,255,255)'; };
+      const els = [...document.querySelectorAll('h1, h2, label, p, .hint, .blurb, nav a, .side-note, button, .lede')].filter((e) => e.textContent.trim() && e.getClientRects().length);
+      let worst = 99, which = '';
+      els.forEach((e) => { const r = ratio(getComputedStyle(e).color, bgOf(e)); if (r < worst) { worst = r; which = e.className || e.tagName; } });
+      return { worst: Math.round(worst * 100) / 100, which };
+    });
+  }
+  const light = await contrastSet(opts);
+  check('A5', 'Text contrast ≥ 4.5:1 (light mode)', light.worst >= 4.5, `lowest ${light.worst} on ${light.which}`);
+  await opts.emulateMedia({ colorScheme: 'dark' });
+  await wait(500); // let colour transitions finish
+  const dark = await contrastSet(opts);
+  check('A6', 'Text contrast ≥ 4.5:1 (dark mode)', dark.worst >= 4.5, `lowest ${dark.worst} on ${dark.which}`);
+  await opts.screenshot({ path: path.join(OUT, 'options-dark.png') });
+  await opts.emulateMedia({ colorScheme: 'light' });
+
+  check('S8', 'HTML in your own profile is shown as text, never run', (await opts.inputValue('#f-firstName')).startsWith('<img') && !(await opts.evaluate(() => window.__pwned)));
+
+  // resume over 5 MB is refused
+  const big = path.join(OUT, 'big.pdf');
+  fs.writeFileSync(big, Buffer.alloc(5.5 * 1024 * 1024, 1));
+  await opts.setInputFiles('#resume-file', big);
+  await wait(500);
+  check('R1', 'Resume over 5 MB is refused with a message', !(await sw.evaluate(() => chrome.storage.local.get('resume'))).resume && /over 5 MB/.test(await opts.textContent('#toast')));
+
+  // export → delete all → import round-trip
+  const [dl] = await Promise.all([opts.waitForEvent('download'), opts.click('text=Export backup')]);
+  const backup = path.join(OUT, 'backup.json');
+  await dl.saveAs(backup);
+  check('R2', 'Export backup downloads your profile', JSON.parse(fs.readFileSync(backup)).profile.email === 'priya@example.com');
+  opts.once('dialog', (d) => d.accept());
+  await opts.click('text=Delete all my data');
+  await wait(400);
+  const afterDelete = await sw.evaluate(() => chrome.storage.local.get(null));
+  check('R3', '“Delete all my data” wipes everything', Object.keys(afterDelete).length === 0, JSON.stringify(Object.keys(afterDelete)));
+  const bad = path.join(OUT, 'bad.json');
+  fs.writeFileSync(bad, '{"hello":1}');
+  await opts.setInputFiles('input[type=file][accept*=json]', bad);
+  await wait(400);
+  check('R4', 'Importing a wrong file is rejected', /Couldn’t import/.test(await opts.textContent('#toast')));
+  await opts.setInputFiles('input[type=file][accept*=json]', backup);
+  await wait(500);
+  check('R5', 'Importing the backup restores the profile', (await sw.evaluate(() => chrome.storage.local.get('profile'))).profile?.email === 'priya@example.com');
+
